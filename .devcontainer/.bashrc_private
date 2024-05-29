@@ -1,0 +1,18 @@
+#!/bin/bash
+
+alias ll="ls -alF"
+
+if [ -f "${CONTAINER_PROJECT_ROOT}/.devcontainer/.env" ]; then
+  export $(cat "${CONTAINER_PROJECT_ROOT}/.devcontainer/.env" | grep -v -e "^ *#" | xargs)
+fi
+
+STS_GET_CALLER_IDENTITY=$(aws sts get-caller-identity)
+if [ "$?" -eq "0" ]; then
+  export AWS_ACCOUNT_ID=$(echo $STS_GET_CALLER_IDENTITY | jq -r '.Account')
+fi
+
+source /etc/bash_completion.d/helm
+
+. <(flux completion bash)
+
+export PATH="$PATH:/home/vscode/.pypoetry/bin"
