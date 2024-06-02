@@ -3,22 +3,9 @@ FROM mcr.microsoft.com/devcontainers/base:dev-ubuntu-22.04
 
 RUN apt-get update && \
     apt-get install -y \
-      default-mysql-client \
-      bash-completion \
-      procps \
-      net-tools \
-      iputils-ping \
-      locales \
-      make \
-      jq \
-      fzf \
-      vim \
-      curl \
-      wget \
-      git \
-      groff \
-      less \
-      sudo \
+      default-mysql-client bash-completion procps net-tools iputils-ping \
+      locales make jq fzf vim \
+      curl wget git groff less sudo \
       gcc
 
 # ロケール設定
@@ -41,6 +28,11 @@ RUN apt-get update && \
 RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
     apt-get install -y ./google-chrome-stable_current_amd64.deb
 
+# Poetry インストール
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/home/vscode/.pypoetry python3 - && \
+    chown -R vscode:vscode /home/vscode/.pypoetry
+ENV PATH="$PATH:/home/vscode/.pypoetry/bin"
+
 # Pythonのパッケージインストール
-COPY src/requirements.txt .
-RUN pip install -r requirements.txt
+#COPY app/job/requirements.txt ./app-job-requirements.txt
+#RUN pip install -r app-job-requirements.txt

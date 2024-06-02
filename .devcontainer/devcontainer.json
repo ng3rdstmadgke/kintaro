@@ -20,7 +20,7 @@
   ],
   // ワーキングディレクトリの設定
   // docker-compose.ymlのservices.main.volumesでマウントしたプロジェクトのディレクトリを指定
-  "workspaceFolder": "/jobcan",
+  "workspaceFolder": "/kintaro",
 
   /**
    *
@@ -41,7 +41,7 @@
    *
    */
   // UIに表示するdevcontainerの名前
-  "name": "jobcan",
+  "name": "kintaro",
 
 
   // devcontainerをシャットダウンするときに関連するコンテナを停止するかどうか

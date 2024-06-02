@@ -2,6 +2,15 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
+from pydantic_settings import BaseSettings
+
+class Environment(BaseSettings):
+    client_code: str
+    username: str
+    password: str
+
+env = Environment()
+
 chrome_options = Options()
 chrome_options.add_argument("--headless")  # ヘッドレスモードを有効にする
 chrome_options.add_argument("--disable-gpu")  # 可能であればGPUの使用を無効にする
@@ -21,24 +30,26 @@ username = driver.find_element(By.ID, "user_email")  # ユーザー名入力欄�
 client_code = driver.find_element(By.ID, "user_client_code")  # ユーザー名入力欄のname属性を指定
 password = driver.find_element(By.ID, "user_password")  # パスワード入力欄のname属性を指定
 
-username.send_keys("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx")  # ユーザー名を入力
-client_code.send_keys("xxxxxxxxxxxxxxxxxxxx")  # ユーザー名を入力
-password.send_keys('xxxxxxxxxxxxx')  # パスワードを入力
+username.send_keys(env.username)
+client_code.send_keys(env.client_code)
+password.send_keys(env.password)
 
 login_button = driver.find_element(By.ID, "login_button")  # ログインボタンのname属性を指定
 login_button.click()
 driver.implicitly_wait(3)
 
+driver.save_screenshot("./tmp/login.png")
+
 driver.get("https://ssl.jobcan.jp/jbcoauth/login")
 
-driver.save_screenshot("logedin.png")
+driver.save_screenshot("./tmp/kintai.png")
 
-adit_btn = driver.find_element(By.ID, "adit-button-push")
-adit_btn.click()
+# 退勤ボタンをクリック
+#adit_btn = driver.find_element(By.ID, "adit-button-push")
+#adit_btn.click()
+# driver.implicitly_wait(3)
 
-driver.implicitly_wait(3)
-
-driver.save_screenshot("adit.png")
+driver.save_screenshot("./tmp/adit.png")
 
 title = driver.title
 print(title)
