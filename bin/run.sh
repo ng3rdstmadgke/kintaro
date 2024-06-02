@@ -9,9 +9,8 @@ cat >&2 <<EOS
 
 [args]
   MODE:
-    app    : アプリを起動
+    job    : jobを起動
     shell  : コンテナにshellでログイン
-    jupyter: JupyterLabを起動
 
 [options]
  -h | --help:
@@ -20,8 +19,6 @@ cat >&2 <<EOS
    環境変数ファイルのパスを指定 (default: ${ROOT_DIR}/app/local.env)
  -p | --prd:
     本番環境モードで起動
- --no-cache:
-   キャッシュを使わないでビルド
 EOS
 exit 1
 }
@@ -31,7 +28,6 @@ source $ROOT_DIR/bin/lib/setting.sh
 
 ENV_PATH="${ROOT_DIR}/app/env/local.env"
 MODE=
-BUILD_OPTIONS=
 BUILD=
 args=()
 while [ "$#" != 0 ]; do
@@ -39,7 +35,6 @@ while [ "$#" != 0 ]; do
     -h | --help  ) usage;;
     -e | --env   ) shift; ENV_PATH=$1 ;;
     -b | --build ) BUILD="1" ;;
-    --no-cache   ) BUILD_OPTIONS="$BUILD_OPTIONS --no-cache" ;;
     -* | --*     ) echo "$1 : 不正なオプションです" >&2; exit 1 ;;
     *            ) args+=("$1") ;;
   esac
@@ -62,6 +57,12 @@ fi
 
 set -e
 cd "$ROOT_DIR"
+
+docker build \
+  -f docker/app/Dockerfile \
+  -t $PROJECT_NAME/app:latest \
+  .
+
 
 OPTIONS=
 if [ "$MODE" = "shell" ]; then
