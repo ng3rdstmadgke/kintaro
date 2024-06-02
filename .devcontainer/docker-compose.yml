@@ -1,19 +1,19 @@
 version: '3.2'
 services:
   main:
-    hostname: main.jobcan.local
+    hostname: main.kintaro.local
     build:
       context: ../
       dockerfile: docker/devcontainer/Dockerfile
     volumes:  # docker-compose.yml があるディレクトリからの相対パスで指定する
-      - ..:/jobcan:cached
+      - ..:/kintaro:cached
       - ~/.aws:/home/vscode/.aws:cached
       - ~/.ssh:/home/vscode/.ssh:cached
     command: sleep infinity
     networks:
-      br-jobcan: {}
+      br-kintaro: {}
 
 networks:
-  br-jobcan:
+  br-kintaro:
     driver: bridge
-    name: br-jobcan
+    name: br-kintaro
