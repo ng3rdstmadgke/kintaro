@@ -16,17 +16,16 @@ cat >&2 <<EOS
  -h | --help:
    ヘルプを表示
  -e | --env <ENV_PATH>:
-   環境変数ファイルのパスを指定 (default: ${ROOT_DIR}/app/local.env)
+   環境変数ファイルのパスを指定 (default: ${CONTAINER_PROJECT_ROOT}/.env)
  -p | --prd:
     本番環境モードで起動
 EOS
 exit 1
 }
 
-ROOT_DIR="$(cd $(dirname $0)/..; pwd)"
-source $ROOT_DIR/bin/lib/setting.sh
+source $CONTAINER_PROJECT_ROOT/bin/lib/setting.sh
 
-ENV_PATH="${ROOT_DIR}/app/env/local.env"
+ENV_PATH="${CONTAINER_PROJECT_ROOT}/.env"
 MODE=
 BUILD=
 args=()
@@ -56,7 +55,7 @@ if [ ! -f "$ENV_ABS_PATH" ]; then
 fi
 
 set -e
-cd "$ROOT_DIR"
+cd "$CONTAINER_PROJECT_ROOT"
 
 docker build \
   -f docker/app/Dockerfile \
