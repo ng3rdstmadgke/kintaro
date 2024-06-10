@@ -12,6 +12,12 @@ RUN echo 'ja_JP.UTF-8 UTF-8' >> /etc/locale.gen && \
     update-locale LANG=ja_JP.UTF-8
 RUN ln -sf /usr/share/zoneinfo/Asia/Tokyo /etc/localtime
 
+# aws cli インストール
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
+
+
 # Google Chrome インストール
 # https://stackoverflow.com/questions/70955307/how-to-install-google-chrome-in-a-docker-container
 RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
@@ -31,5 +37,6 @@ RUN poetry install --no-root --no-dev
 
 # ソースコードのコピー
 COPY app /opt/app
+RUN mkdir -p /opt/app/tmp
 
 CMD ["/bin/bash"]

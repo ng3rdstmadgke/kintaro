@@ -19,6 +19,45 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     unzip awscliv2.zip && \
     ./aws/install
 
+# kubectl インストール
+# https://kubernetes.io/ja/docs/tasks/tools/install-kubectl/
+RUN curl -LO https://dl.k8s.io/release/v1.22.6/bin/linux/amd64/kubectl && \
+    chmod +x ./kubectl && \
+    mv ./kubectl /usr/local/bin/kubectl
+
+# eksctl インストール
+RUN curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
+    mv /tmp/eksctl /usr/local/bin
+
+# terraform インストール (version 1.5.* が必要)
+# https://developer.hashicorp.com/terraform/install
+RUN wget https://releases.hashicorp.com/terraform/1.8.0/terraform_1.8.0_linux_amd64.zip && \
+    unzip terraform_1.8.0_linux_amd64.zip && \
+    mv terraform /usr/local/bin/ && \
+    terraform -install-autocomplete 
+
+# helmインストール
+RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash && \
+    helm completion bash > /etc/bash_completion.d/helm
+
+# helmのリポジトリにeksのチャート追加
+RUN helm repo add eks https://aws.github.io/eks-charts && \
+    helm repo update
+
+# Flux CLI インストール
+RUN curl -s https://fluxcd.io/install.sh | sudo bash
+
+# Kustomizeのインストール
+# https://kubectl.docs.kubernetes.io/installation/kustomize/binaries/
+RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash && \
+    mv kustomize /usr/local/bin/
+
+# Argo CD CLI インストール
+# https://argo-cd.readthedocs.io/en/stable/cli_installation/#download-with-curl
+RUN curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 && \
+    sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd && \
+    rm argocd-linux-amd64
+
 # pythonのインストール
 RUN apt-get update && \
     apt-get install -y python3.10 python3-pip

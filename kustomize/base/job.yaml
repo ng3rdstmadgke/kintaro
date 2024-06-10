@@ -1,0 +1,89 @@
+---
+# ネームスペース
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kintaro-default
+
+---
+# timecard-jobを実行するサービスアカウント
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: timecard-job
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::674582907715:role/kintaro-prd-TimecardJobRole
+
+---
+# TriggerAuthentication | KEDA: https://keda.sh/docs/2.14/concepts/authentication/#re-use-credentials-and-delegate-auth-with-triggerauthentication
+# aws sqs (use podidentity providers): https://keda.sh/docs/2.14/scalers/aws-sqs/#scaling-a-deployment-using-podidentity-providers
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-aws-credentials
+spec:
+  podIdentity:
+    # AWS (IRSA Pod Identity Webhook): https://keda.sh/docs/2.14/authentication-providers/aws/
+    provider: aws
+    # aws provider には roleArnモード と identityOwnerモードがある
+    # roleArnモードでは、keda-operatorが任意のIAM RoleをAssumeRoleしてSQSにアクセスします。
+    # 指定したIAM Roleの権限のみが適用されるため、最小権限の原則に従ってアクセス権限を設定することが可能です。
+    roleArn: arn:aws:iam::674582907715:role/kintaro-prd-KedaTriggerAuthRole
+
+---
+# Scaling Jobs | KEDA: https://keda.sh/docs/2.14/concepts/scaling-jobs/
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: timecard-job
+spec:
+  pollingInterval: 30
+  jobTargetRef:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 1 # 失敗時のリトライ回数
+    ttlSecondsAfterFinished: 300  # ジョブの完了後に削除されるまでの秒数
+    # https://kubernetes.io/docs/concepts/workloads/controllers/job/
+    template:
+      spec:
+        serviceAccountName: timecard-job
+        restartPolicy: Never
+        containers:
+        - name: timecard-job
+          image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app:latest
+          command: ["poetry", "run", "python", "job.py"]
+          # command: ["aws", "s3", "ls"]
+          env:
+          - name: SQS_URL
+            value: "https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue"
+          - name: APP_BUCKET
+            value: "kintaro-app"
+  triggers:
+  # AWS SQS Queue: https://keda.sh/docs/2.14/scalers/aws-sqs/#trigger-specification
+  - type: aws-sqs-queue
+    metadata:
+      queueURL: https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue
+      awsRegion: ap-northeast-1
+      queueLength: "1"  # 一つのpodが処理するメッセージ数
+    authenticationRef:
+      name: keda-trigger-auth-aws-credentials
+
+---
+# 動作確認用サンプルジョブ
+# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/
+#apiVersion: batch/v1
+#kind: Job
+#metadata:
+#  name: sample-job
+#spec:
+#  ttlSecondsAfterFinished: 60  # ジョブの完了後に削除されるまでの秒数
+#  backoffLimit: 1  # 失敗時のリトライ回数
+#  # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/#JobSpec
+#  template:
+#    spec:
+#      serviceAccountName: timecard-job
+#      containers:
+#      - name: sample-job
+#        image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app:latest
+#        command: ["aws", "s3", "ls"]
+#      restartPolicy: Never  # コンテナの再起動設定。DeploymentならAlways, JobならNeverかOnFailure
