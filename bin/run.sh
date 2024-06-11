@@ -10,6 +10,7 @@ cat >&2 <<EOS
 [args]
   MODE:
     job    : jobを起動
+    app    : webアプリコンテナを起動
     shell  : コンテナにshellでログイン
 
 [options]
@@ -17,8 +18,6 @@ cat >&2 <<EOS
    ヘルプを表示
  -e | --env <ENV_PATH>:
    環境変数ファイルのパスを指定 (default: ${CONTAINER_PROJECT_ROOT}/.env)
- -p | --prd:
-    本番環境モードで起動
 EOS
 exit 1
 }
@@ -43,8 +42,8 @@ done
 [ "${#args[@]}" != 1 ] && usage
 MODE="${args[0]}"
 
-if [[ ! "$MODE" =~ ^(shell|job|crawler|backend)$ ]]; then
-  echo "--mode には shell, job, crawler, backend のいずれかを指定してください" >&2
+if [[ ! "$MODE" =~ ^(shell|job|crawler|app)$ ]]; then
+  echo "--mode には shell, job, crawler, app のいずれかを指定してください" >&2
   exit 1
 fi
 
@@ -68,8 +67,16 @@ if [ "$MODE" = "shell" ]; then
   CMD="/bin/bash"
 elif [ "$MODE" = "job" ]; then
   CMD="poetry run python job.py"
-else
-  CMD="/bin/bash"
+elif [ "$MODE" = "app" ]; then
+  CMD="poetry run uvicorn app:app --workers 2 --host 0.0.0.0 --port 8080 --reload"
+  OPTIONS="$OPTIONS -p 8080:8080 --name ${PROJECT_NAME}-app"
+fi
+
+# docker network
+NETWORK_NAME="br-kintaro"
+NETWORK_EXISTS="$(docker network inspect $NETWORK_NAME >/dev/null 2>&1; echo $?)"
+if [ "$NETWORK_EXISTS" = 1 ]; then
+  docker network create --driver bridge --subnet "$NETWORK_CIDR" $NETWORK_NAME
 fi
 
 docker run --rm -ti \

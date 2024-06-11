@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Top{% endblock %}
+{% block content %}
+<div id="app">
+  <h1>TimeCard Setting</h1>
+  <form class="mt-5" @submit.prevent="submit">
+    <div class="form-check mb-3">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        value=""
+        v-model="timecard.enabled"
+        id="enable_timecard">
+      <label class="form-check-label" for="enable_timecard">
+        自動打刻を有効化
+      </label>
+    </div>
+
+    <div class="input-group mb-3" v-for="[k, setting] in Object.entries(timecard.setting)">
+      <span class="input-group-text">[[k]]</span>
+      <input
+        type="time"
+        required
+        v-model="setting.clock_in"
+        class="form-control"
+        placeholder="Username"
+        aria-label="Username">
+      <span class="input-group-text">~</span>
+      <input
+        type="time"
+        required
+        v-model="setting.clock_out"
+        class="form-control"
+        placeholder="Server"
+        aria-label="Server">
+    </div>
+    <div class="d-flex justify-content-end">
+      <div>
+        <button class="btn btn-primary" type="submit">Update</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+const { createApp, ref } = Vue
+
+const app = createApp({
+  // Composition API: setup(): https://ja.vuejs.org/api/composition-api-setup
+  setup() {
+    if (!AuthUtil.authenticated()) {
+      location.href = '/login';
+    }
+
+    // 現状の設定を取得
+    const timecard = ref({"enabled": false, "setting": {}})
+    FetchUtil.get('/api/timecard').then(json => {
+      timecard.value = json
+    }).catch(err => {
+      console.error(err)
+      alert(`エラーが発生しました: ${err}`)
+    })
+
+    // 設定の更新
+    function submit() {
+      FetchUtil.post('/api/timecard', timecard.value).then(json => {
+        timecard.value = json
+
+      }).catch(err => {
+        console.error(err)
+        alert(`エラーが発生しました: ${err}`)
+      })
+    }
+
+
+    return {
+      timecard,
+      submit,
+    }
+  },
+  mounted() {
+    console.log("mounted")
+  },
+  delimiters: ['[[', ']]']
+})
+app.mount('#app')
+</script>
+{% endblock %}

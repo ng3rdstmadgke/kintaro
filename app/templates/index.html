@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Top{% endblock %}
+{% block content %}
+<script>
+  if (!AuthUtil.authenticated()) {
+    location.href = '/login';
+  } else {
+    location.href = '/timecard';
+  }
+</script>
+{% endblock %}

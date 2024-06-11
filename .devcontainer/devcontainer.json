@@ -43,6 +43,9 @@
   // UIに表示するdevcontainerの名前
   "name": "kintaro",
 
+  "forwardPorts": [
+    "kintaro-app:8080"
+  ],
 
   // devcontainerをシャットダウンするときに関連するコンテナを停止するかどうか
   "shutdownAction": "stopCompose",

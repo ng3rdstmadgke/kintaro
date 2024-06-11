@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+  <!-- Bootstrap Icons: https://icons.getbootstrap.com/ -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <!-- Vue.js -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Utility -->
+  <script src="/static/js/utils.js"></script>
+
+  {% block head %}
+  {% endblock %}
+  <title>
+    {% block title %}{% endblock %}
+  </title>
+</head>
+<body>
+  <div>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-md bg-dark border-bottom border-bottom-dark" data-bs-theme="dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">Kintaro</a>
+        <div class="d-flex justify-content-end">
+          <button
+            id="logout_btn"
+            type="button"
+            class="btn btn-secondary"
+            onclick="AuthUtil.logout(); location.href='/login'">
+            <i class="bi bi-box-arrow-right"></i>
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="container mt-3">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  <script>
+    if (!AuthUtil.authenticated()) {
+      document.getElementById('logout_btn').style.display = 'none'
+    } else {
+      document.getElementById('logout_btn').style.display = 'block'
+    }
+  </script>
+</body>
+</html>

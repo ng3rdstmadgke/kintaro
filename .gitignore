@@ -3,3 +3,4 @@
 tmp/
 **/.terraform
 **/secrets.auto.tfvars
+**/__pycache__
