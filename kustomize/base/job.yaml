@@ -13,7 +13,7 @@ metadata:
   name: timecard-job
   annotations:
     # terraformのoutputの app_role_arn に修正
-    eks.amazonaws.com/role-arn: arn:aws:iam::674582907715:role/kintaro-prd-TimecardJobRole
+    eks.amazonaws.com/role-arn: ApplicationRoleArn
 
 ---
 # KEDAがSQSをポーリングするための認可情報
@@ -29,7 +29,7 @@ spec:
     # aws provider には roleArnモード と identityOwnerモードがある
     # roleArnモードでは、keda-operatorが任意のIAM RoleをAssumeRoleしてSQSにアクセスします。
     # 指定したIAM Roleの権限のみが適用されるため、最小権限の原則に従ってアクセス権限を設定することが可能です。
-    roleArn: arn:aws:iam::674582907715:role/kintaro-prd-KedaTriggerAuthRole
+    roleArn: KedaTriggerAuthRoleArn
 
 ---
 # KEDAが実行するジョブの定義
@@ -52,17 +52,19 @@ spec:
         restartPolicy: Never
         containers:
         - name: timecard-job
-          image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app:latest
+          image: kintaro/app
           command: ["poetry", "run", "python", "job.py"]
           env:
           - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
-            value: "https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue"
+            value: JobQueueUrl
+          - name: APP_BUCKET  # ※ terraformのoutputの app_sqs_url に修正
+            value: BucketName
   triggers:
   # AWS SQS Queue: Triggerhttps://keda.sh/docs/2.14/scalers/aws-sqs/
   - type: aws-sqs-queue
     metadata:
       # terraformのoutputの app_sqs_url に修正
-      queueURL: https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue
+      queueURL: JobQueueUrl
       awsRegion: ap-northeast-1
       queueLength: "1"  # 一つのpodが処理するメッセージ数
     authenticationRef:

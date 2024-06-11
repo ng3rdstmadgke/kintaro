@@ -9,10 +9,17 @@ namespace: kintaro-prd
 
 # images: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/images/
 # nameに一致するコンテナイメージのタグを上書き
-images:
-- name: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app
-  newName: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app
-  newTag: latest
+#images:
+#- name: kintaro/app
+#  newName: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app
+#  newTag: latest
+
+# patches: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/patches/
+#   - Patch using Path Strategic Merge: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/patches/#patch-using-path-strategic-merge
+patches:
+- path: scaled_job.patch.yaml
+- path: service_account.patch.yaml
+- path: trigger_authentication.patch.yaml
 
 # baseのkustomization.yamlが存在するディレクトリの相対パスを指定
 resources:

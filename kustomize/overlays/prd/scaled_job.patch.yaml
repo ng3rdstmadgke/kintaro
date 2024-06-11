@@ -1,0 +1,27 @@
+# Patch using Path Strategic Merge: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/patches/#patch-using-path-strategic-merge
+# patchファイルでは apiVersion, kind, metadata.name を指定して、パッチを適用するリソースを特定します。
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: timecard-job
+spec:
+  jobTargetRef:
+    template:
+      spec:
+        containers:
+        - name: timecard-job
+          image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:latest
+          command: ["poetry", "run", "python", "job.py"]
+          env:
+          - name: SQS_URL
+            value: "https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue"
+          - name: APP_BUCKET  # ※ terraformのoutputの app_sqs_url に修正
+            value: kintaro-app
+  triggers:
+  - type: aws-sqs-queue
+    metadata:
+      queueURL: https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue
+      awsRegion: ap-northeast-1
+      queueLength: "1"  # 一つのpodが処理するメッセージ数
+    authenticationRef:
+      name: keda-trigger-auth-aws-credentials
