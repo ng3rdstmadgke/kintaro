@@ -85,15 +85,9 @@
 
         // Backend
         "ms-python.vscode-pylance",
-        "ms-python.black-formatter",
         "matangover.mypy",
-        "charliermarsh.ruff",
-        "njpwerner.autodocstring",
-        "ms-toolsai.jupyter",
 
         // DevTools
-        "mhutchie.git-graph",
-        "redhat.vscode-xml",
         "GitHub.copilot",
         "GitHub.copilot-chat"
 
