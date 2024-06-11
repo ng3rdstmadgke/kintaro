@@ -28,6 +28,26 @@ provider "aws" {
 data "aws_caller_identity" "self" { }
 data "aws_region" "self" {}
 
+variable "oidc_provider" {
+  # 取得コマンド: aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
+  type = string
+}
+
+variable "keda_namespace" {
+  type = string
+  default = "keda"
+}
+
+variable "app_namespace" {
+  type = string
+  default = "*"
+}
+
+variable "app_service_account" {
+  type = string
+  default = "*"
+}
+
 output "app_ecr_repository" {
   value = aws_ecr_repository.app.repository_url
 }

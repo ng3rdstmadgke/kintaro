@@ -6,17 +6,18 @@ metadata:
   name: kintaro-default
 
 ---
-# timecard-jobを実行するサービスアカウント
+# timecard-job(アプリ)を実行するサービスアカウント
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: timecard-job
   annotations:
+    # terraformのoutputの app_role_arn に修正
     eks.amazonaws.com/role-arn: arn:aws:iam::674582907715:role/kintaro-prd-TimecardJobRole
 
 ---
-# TriggerAuthentication | KEDA: https://keda.sh/docs/2.14/concepts/authentication/#re-use-credentials-and-delegate-auth-with-triggerauthentication
-# aws sqs (use podidentity providers): https://keda.sh/docs/2.14/scalers/aws-sqs/#scaling-a-deployment-using-podidentity-providers
+# KEDAがSQSをポーリングするための認可情報
+# TriggerAuthentication: https://keda.sh/docs/2.14/concepts/authentication/#re-use-credentials-and-delegate-auth-with-triggerauthentication
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
@@ -31,6 +32,7 @@ spec:
     roleArn: arn:aws:iam::674582907715:role/kintaro-prd-KedaTriggerAuthRole
 
 ---
+# KEDAが実行するジョブの定義
 # Scaling Jobs | KEDA: https://keda.sh/docs/2.14/concepts/scaling-jobs/
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
@@ -43,25 +45,23 @@ spec:
     completions: 1
     backoffLimit: 1 # 失敗時のリトライ回数
     ttlSecondsAfterFinished: 300  # ジョブの完了後に削除されるまでの秒数
-    # https://kubernetes.io/docs/concepts/workloads/controllers/job/
+    # Jobs: https://kubernetes.io/docs/concepts/workloads/controllers/job/
     template:
       spec:
-        serviceAccountName: timecard-job
+        serviceAccountName: timecard-job  # jobを実行するサービスアカウント
         restartPolicy: Never
         containers:
         - name: timecard-job
           image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app:latest
           command: ["poetry", "run", "python", "job.py"]
-          # command: ["aws", "s3", "ls"]
           env:
-          - name: SQS_URL
+          - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
             value: "https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue"
-          - name: APP_BUCKET
-            value: "kintaro-app"
   triggers:
-  # AWS SQS Queue: https://keda.sh/docs/2.14/scalers/aws-sqs/#trigger-specification
+  # AWS SQS Queue: Triggerhttps://keda.sh/docs/2.14/scalers/aws-sqs/
   - type: aws-sqs-queue
     metadata:
+      # terraformのoutputの app_sqs_url に修正
       queueURL: https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue
       awsRegion: ap-northeast-1
       queueLength: "1"  # 一つのpodが処理するメッセージ数

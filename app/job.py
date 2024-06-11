@@ -2,25 +2,19 @@ import boto3
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 
+# 環境変数
 class Environment(BaseSettings):
     app_bucket: str
     sqs_url: str
     aws_region: str = "ap-northeast-1"
-
 env = Environment()
-
-
-class QueueMessageBody(BaseModel):
-    client_code: str
-    username: str
-    password: str
 
 sqs_client = boto3.client('sqs', region_name=env.aws_region)
 
+# キューからメッセージを取り出す
 # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs/client/receive_message.html
 response = sqs_client.receive_message(
     QueueUrl=env.sqs_url,
@@ -29,18 +23,26 @@ response = sqs_client.receive_message(
 )
 messages = response.get("Messages", [])
 
+# メッセージが存在しない場合はそのまま終了
 if len(messages) <= 0:
     exit()
 
+# 取得したメッセージを削除
 # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sqs/client/delete_message.html
 sqs_client.delete_message(
     QueueUrl=env.sqs_url,
     ReceiptHandle=messages[0]["ReceiptHandle"],
 )
 
+# メッセージをパースして表示
+class QueueMessageBody(BaseModel):
+    client_code: str
+    username: str
+    password: str
 body = QueueMessageBody.model_validate_json(messages[0]["Body"])
 print(body)
 
+# 打刻処理
 chrome_options = Options()
 chrome_options.add_argument("--headless")  # ヘッドレスモードを有効にする
 chrome_options.add_argument("--disable-gpu")  # 可能であればGPUの使用を無効にする
