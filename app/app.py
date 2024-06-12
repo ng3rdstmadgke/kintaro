@@ -60,12 +60,16 @@ class TimeCard(BaseModel):
         Thu: TimeCardSettingValue
         Fri: TimeCardSettingValue
     enabled: bool
+    jobcan_id: str
+    jobcan_password: str
     setting: TimeCardSetting
 
 @app.get("/api/timecard", response_model=TimeCard)
 def read_timecard():
     return {
         "enabled": True,
+        "jobcan_id": "123456789",
+        "jobcan_password": "password",
         "setting": {
             "Mon": {"clock_in": "09:00", "clock_out": "18:00"},
             "Tue": {"clock_in": "09:00", "clock_out": "18:00"},
@@ -81,6 +85,8 @@ def post_timecard(
 ):
     return {
         "enabled": False,
+        "jobcan_id": "123456789",
+        "jobcan_password": "password",
         "setting": {
             "Mon": {"clock_in": "09:30", "clock_out": "18:30"},
             "Tue": {"clock_in": "09:30", "clock_out": "18:30"},

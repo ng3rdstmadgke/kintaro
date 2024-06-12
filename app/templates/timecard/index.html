@@ -15,6 +15,24 @@
         自動打刻を有効化
       </label>
     </div>
+    <div class="form-floating mb-3">
+      <input
+        type="text"
+        required
+        class="form-control"
+        id="jobcanId"
+        v-model="timecard.jobcan_id">
+      <label for="jobcanId">Jobcan ID</label>
+    </div>
+    <div class="form-floating mb-3">
+      <input
+        type="password"
+        required
+        class="form-control"
+        id="jobcanPassword"
+        v-model="timecard.jobcan_password">
+      <label for="jobcanPassword">Jobcan Password</label>
+    </div>
 
     <div class="input-group mb-3" v-for="[k, setting] in Object.entries(timecard.setting)">
       <span class="input-group-text">[[k]]</span>
@@ -23,7 +41,6 @@
         required
         v-model="setting.clock_in"
         class="form-control"
-        placeholder="Username"
         aria-label="Username">
       <span class="input-group-text">~</span>
       <input
@@ -31,7 +48,6 @@
         required
         v-model="setting.clock_out"
         class="form-control"
-        placeholder="Server"
         aria-label="Server">
     </div>
     <div class="d-flex justify-content-end">
