@@ -103,6 +103,24 @@ resource "aws_sqs_queue" "timecard_job_queue" {
 }
 
 /**
+ * DynamoDB
+ * https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table
+ */
+
+resource "aws_dynamodb_table" "users" {
+  name = "${local.app_name}-${local.stage}-Users"
+  billing_mode   = "PAY_PER_REQUEST"
+
+  hash_key       = "username"
+  //range_key      = "timestamp"
+
+  attribute {
+    name = "username"
+    type = "S"
+  }
+}
+
+/**
  * KEDAがtriggerとして利用するSQSにアクセスするためのIAM Role  (このRoleはKubernetesのServiceAccountと紐づく)
  */
 resource "aws_iam_role" "keda_trigger_auth" {

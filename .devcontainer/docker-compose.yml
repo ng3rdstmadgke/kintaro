@@ -12,7 +12,22 @@ services:
     command: sleep infinity
     networks:
       br-kintaro: {}
-
+  localstack:
+    hostname: localstack.kintaro.local
+    build:
+      context: ../
+      dockerfile: docker/localstack/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      # LocalStack - init-fooks: https://docs.localstack.cloud/references/init-hooks/
+      - ../docker/localstack/init:/etc/localstack/init
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      br-kintaro: {}
 networks:
   br-kintaro:
     driver: bridge

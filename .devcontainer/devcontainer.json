@@ -16,6 +16,7 @@
 
   // docker-compose.ymlで定義したサービスから、devcontainerと同時に起動するサービスを指定する。
   "runServices": [
+    "localstack",
     "main"
   ],
   // ワーキングディレクトリの設定

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 alias ll="ls -alF"
+alias awslocal="aws --endpoint-url http://localstack.kintaro.local:4566"
 
 if [ -f "${CONTAINER_PROJECT_ROOT}/.devcontainer/.env" ]; then
   export $(cat "${CONTAINER_PROJECT_ROOT}/.devcontainer/.env" | grep -v -e "^ *#" | xargs)
