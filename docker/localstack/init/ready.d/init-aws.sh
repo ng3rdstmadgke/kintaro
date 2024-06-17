@@ -44,7 +44,7 @@ for username in "user1" "user2" "user3"; do
     --table-name ${APP_NAME}-${STAGE_NAME}-Users \
     --item "{
       \"username\": {\"S\": \"$username\"},
-      \"settings\": {\"S\": \"$SETTING\" }
+      \"setting\": {\"S\": \"$SETTING\" }
     }"
 done
 

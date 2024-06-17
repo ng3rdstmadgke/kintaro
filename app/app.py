@@ -1,3 +1,4 @@
+import boto3
 from datetime import datetime, timedelta
 from typing import List, Tuple
 from pydantic import BaseModel
@@ -10,11 +11,16 @@ from jose import jwt, JWTError
 
 from lib.app.env import get_env
 
+env = get_env()
+
 app = FastAPI(
     redoc_url="/api/redoc",
     docs_url="/api/docs",
     openapi_url="/api/docs/openapi.json"
 )
+
+def get_dynamo_client():
+    return boto3.client('dynamodb', region_name=env.aws_region, endpoint_url=env.aws_endpoint_url)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -49,7 +55,7 @@ def healthcheck():
 
 
 
-class TimeCard(BaseModel):
+class TimeCardSetting(BaseModel):
     class TimeCardSetting(BaseModel):
         class TimeCardSettingValue(BaseModel):
             clock_in: str
@@ -64,37 +70,29 @@ class TimeCard(BaseModel):
     jobcan_password: str
     setting: TimeCardSetting
 
-@app.get("/api/timecard", response_model=TimeCard)
-def read_timecard():
-    return {
-        "enabled": True,
-        "jobcan_id": "123456789",
-        "jobcan_password": "password",
-        "setting": {
-            "Mon": {"clock_in": "09:00", "clock_out": "18:00"},
-            "Tue": {"clock_in": "09:00", "clock_out": "18:00"},
-            "Wed": {"clock_in": "09:00", "clock_out": "18:00"},
-            "Thu": {"clock_in": "09:00", "clock_out": "18:00"},
-            "Fri": {"clock_in": "09:00", "clock_out": "18:00"},
-        }
-    }
-
-@app.post("/api/timecard", response_model=TimeCard)
-def post_timecard(
-    data: TimeCard
+@app.get("/api/timecard", response_model=TimeCardSetting)
+def read_timecard(
+    dynamo_client = Depends(get_dynamo_client)
 ):
-    return {
-        "enabled": False,
-        "jobcan_id": "123456789",
-        "jobcan_password": "password",
-        "setting": {
-            "Mon": {"clock_in": "09:30", "clock_out": "18:30"},
-            "Tue": {"clock_in": "09:30", "clock_out": "18:30"},
-            "Wed": {"clock_in": "09:30", "clock_out": "18:30"},
-            "Thu": {"clock_in": "09:30", "clock_out": "18:30"},
-            "Fri": {"clock_in": "09:30", "clock_out": "18:30"},
-        }
-    }
+    user_name = "user1"
+    table_name = f"{env.app_name}-{env.stage_name}-Users"
+    item = dynamo_client.get_item(TableName=table_name, Key={"username": {"S": user_name}})
+    timecard_setting = item["Item"]["settings"]["S"]
+    return TimeCardSetting.model_validate_json(timecard_setting)
+
+@app.post("/api/timecard", response_model=TimeCardSetting)
+def post_timecard(
+    data: TimeCardSetting,
+    dynamo_client = Depends(get_dynamo_client)
+):
+    user_name = "user1"
+    table_name = f"{env.app_name}-{env.stage_name}-Users"
+    timecard_setting = TimeCardSetting.model_dump_json(data)
+    dynamo_client.put_item(
+        TableName=table_name,
+        Item={ "username": {"S": user_name}, "settings": {"S": timecard_setting} }
+    )
+    return data
 
 @app.post("/api/token")
 def login_for_access_token(
