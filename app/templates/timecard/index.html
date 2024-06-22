@@ -2,7 +2,7 @@
 {% block title %}Top{% endblock %}
 {% block content %}
 <div id="app">
-  <h1>TimeCard Setting</h1>
+  <h1>タイムカード設定</h1>
   <form class="mt-5" @submit.prevent="submit">
     <div class="form-check mb-3">
       <input
@@ -10,6 +10,7 @@
         type="checkbox"
         value=""
         v-model="timecard.enabled"
+        readonly
         id="enable_timecard">
       <label class="form-check-label" for="enable_timecard">
         自動打刻を有効化
@@ -22,7 +23,7 @@
         class="form-control"
         id="jobcanId"
         v-model="timecard.jobcan_id">
-      <label for="jobcanId">Jobcan ID</label>
+      <label for="jobcanId">ジョブカンID</label>
     </div>
     <div class="form-floating mb-3">
       <input
@@ -31,7 +32,7 @@
         class="form-control"
         id="jobcanPassword"
         v-model="timecard.jobcan_password">
-      <label for="jobcanPassword">Jobcan Password</label>
+      <label for="jobcanPassword">ジョブカンPassword</label>
     </div>
 
     <div class="input-group mb-3" v-for="[k, setting] in Object.entries(timecard.setting)">

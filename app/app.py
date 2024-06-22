@@ -41,6 +41,14 @@ async def login(request: Request):
         context={}
     )
 
+@app.get("/new_password", response_class=HTMLResponse)
+async def new_password(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="new_password.html",
+        context={}
+    )
+
 @app.get("/timecard", response_class=HTMLResponse)
 async def timecard(request: Request):
     return templates.TemplateResponse(
@@ -59,7 +67,7 @@ def healthcheck():
 
 
 @app.get("/api/timecard", response_model=TimeCardSetting)
-def read_timecard(
+def get_timecard(
     current_user = Depends(get_current_user)
 ):
     _, current_setting = current_user
@@ -67,7 +75,7 @@ def read_timecard(
 
 
 @app.post("/api/timecard", response_model=TimeCardSetting)
-def post_timecard(
+def update_timecard(
     data: TimeCardSetting,
     current_user = Depends(get_current_user),
     dynamo_client = Depends(get_dynamo_client),
@@ -84,23 +92,27 @@ def post_timecard(
 
 
 @app.post("/api/new_password")
-def new_password(
+def update_password(
     data: NewPasswordRequest,
     cognito_idp_client = Depends(get_cognito_idp_client),
 ):
-    secret_hash = env.get_secret_hash(data.username)
-    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/admin_set_user_password.html
-    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/respond_to_auth_challenge.html
-    response = cognito_idp_client.respond_to_auth_challenge(
-        ChallengeName="NEW_PASSWORD_REQUIRED",
-        ClientId=env.cognito_client_id,
-        ChallengeResponses={
-            "USERNAME": data.username,
-            "NEW_PASSWORD": data.new_password,
-            "SECRET_HASH": secret_hash,
-        },
-        Session=data.session,
-    )
+    try:
+        secret_hash = env.get_secret_hash(data.username)
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/admin_set_user_password.html
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/respond_to_auth_challenge.html
+        response = cognito_idp_client.respond_to_auth_challenge(
+            ChallengeName="NEW_PASSWORD_REQUIRED",
+            ClientId=env.cognito_client_id,
+            ChallengeResponses={
+                "USERNAME": data.username,
+                "NEW_PASSWORD": data.new_password,
+                "SECRET_HASH": secret_hash,
+            },
+            Session=data.session,
+        )
+    except cognito_idp_client.exceptions.NotAuthorizedException as e:
+        print("{}\n{}".format(str(e), traceback.format_exc()))
+        raise HTTPException(status_code=400, detail=f"Failed to update password")
 
     if "AuthenticationResult" not in response or "IdToken" not in response["AuthenticationResult"]:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
@@ -110,7 +122,7 @@ def new_password(
 
 
 @app.post("/api/token")
-def login_for_access_token(
+def get_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     cognito_idp_client = Depends(get_cognito_idp_client),
 ):
