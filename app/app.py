@@ -20,7 +20,7 @@ app = FastAPI(
 )
 
 def get_dynamo_client():
-    return boto3.client('dynamodb', region_name=env.aws_region, endpoint_url=env.aws_endpoint_url)
+    return boto3.client('dynamodb', region_name=env.aws_region, endpoint_url=env.endpoint_url)
 
 templates = Jinja2Templates(directory="templates")
 
@@ -77,7 +77,7 @@ def read_timecard(
     user_name = "user1"
     table_name = f"{env.app_name}-{env.stage_name}-Users"
     item = dynamo_client.get_item(TableName=table_name, Key={"username": {"S": user_name}})
-    timecard_setting = item["Item"]["settings"]["S"]
+    timecard_setting = item["Item"]["setting"]["S"]
     return TimeCardSetting.model_validate_json(timecard_setting)
 
 @app.post("/api/timecard", response_model=TimeCardSetting)
@@ -90,7 +90,7 @@ def post_timecard(
     timecard_setting = TimeCardSetting.model_dump_json(data)
     dynamo_client.put_item(
         TableName=table_name,
-        Item={ "username": {"S": user_name}, "settings": {"S": timecard_setting} }
+        Item={ "username": {"S": user_name}, "setting": {"S": timecard_setting} }
     )
     return data
 
