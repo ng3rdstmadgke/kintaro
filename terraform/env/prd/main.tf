@@ -120,9 +120,6 @@ resource "aws_dynamodb_table" "users" {
   }
 }
 
-/**
- * cognito
- */
 
 /**
  * KEDAがtriggerとして利用するSQSにアクセスするためのIAM Role  (このRoleはKubernetesのServiceAccountと紐づく)

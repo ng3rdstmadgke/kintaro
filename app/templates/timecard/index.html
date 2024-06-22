@@ -79,12 +79,13 @@ const app = createApp({
 
     // 設定の更新
     function submit() {
-      FetchUtil.post('/api/timecard', timecard.value).then(json => {
+      FetchUtil.post('/api/timecard', timecard.value)
+      .then(json => {
         timecard.value = json
-
+        alert('更新しました')
       }).catch(err => {
         console.error(err)
-        alert(`エラーが発生しました: ${err}`)
+        alert(`更新に失敗しました: ${err}`)
       })
     }
 

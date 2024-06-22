@@ -60,12 +60,14 @@ const app = createApp({
         method: "POST",
         body: form
       })
-      let json = await response.json()
       if (!response.ok) {
-        throw new Error(json.message || response.statusText)
+        console.error(response.statusText)
+        alert(`ログインに失敗しました: ${response.statusText}`)
+        return
       }
+      let json = await response.json()
       let token = json.access_token
-      console.log("token: ", token)
+      //console.log("token: ", token)
       AuthUtil.login(token)
       location.href = "/"
     }

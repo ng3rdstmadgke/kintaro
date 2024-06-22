@@ -1,15 +1,15 @@
-import boto3
-from datetime import datetime, timedelta
-from typing import List, Tuple
-from pydantic import BaseModel
+import traceback
+
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt, JWTError
 
-from lib.app.env import get_env
+from lib.app.env import get_env, Environment
+from lib.app.auth import get_current_user, create_token
+from lib.app.schema import TimeCardSetting, NewPasswordRequest
+from lib.app.util import get_dynamo_client, get_cognito_idp_client
 
 env = get_env()
 
@@ -19,8 +19,9 @@ app = FastAPI(
     openapi_url="/api/docs/openapi.json"
 )
 
-def get_dynamo_client():
-    return boto3.client('dynamodb', region_name=env.aws_region, endpoint_url=env.endpoint_url)
+####################################
+# 画面表示
+####################################
 
 templates = Jinja2Templates(directory="templates")
 
@@ -49,69 +50,104 @@ async def timecard(request: Request):
     )
 
 
+####################################
+# API
+####################################
 @app.get("/api/healthcheck")
 def healthcheck():
     return {"status": "Healthy"}
 
 
-
-class TimeCardSetting(BaseModel):
-    class TimeCardSetting(BaseModel):
-        class TimeCardSettingValue(BaseModel):
-            clock_in: str
-            clock_out: str
-        Mon: TimeCardSettingValue
-        Tue: TimeCardSettingValue
-        Wed: TimeCardSettingValue
-        Thu: TimeCardSettingValue
-        Fri: TimeCardSettingValue
-    enabled: bool
-    jobcan_id: str
-    jobcan_password: str
-    setting: TimeCardSetting
-
 @app.get("/api/timecard", response_model=TimeCardSetting)
 def read_timecard(
-    dynamo_client = Depends(get_dynamo_client)
+    current_user = Depends(get_current_user)
 ):
-    user_name = "user1"
-    table_name = f"{env.app_name}-{env.stage_name}-Users"
-    item = dynamo_client.get_item(TableName=table_name, Key={"username": {"S": user_name}})
-    timecard_setting = item["Item"]["setting"]["S"]
-    return TimeCardSetting.model_validate_json(timecard_setting)
+    _, current_setting = current_user
+    return current_setting
+
 
 @app.post("/api/timecard", response_model=TimeCardSetting)
 def post_timecard(
     data: TimeCardSetting,
-    dynamo_client = Depends(get_dynamo_client)
+    current_user = Depends(get_current_user),
+    dynamo_client = Depends(get_dynamo_client),
+    env: Environment = Depends(get_env),
 ):
-    user_name = "user1"
+    username, current_setting = current_user
     table_name = f"{env.app_name}-{env.stage_name}-Users"
     timecard_setting = TimeCardSetting.model_dump_json(data)
     dynamo_client.put_item(
         TableName=table_name,
-        Item={ "username": {"S": user_name}, "setting": {"S": timecard_setting} }
+        Item={ "username": {"S": username}, "setting": {"S": timecard_setting} }
     )
     return data
 
-@app.post("/api/token")
-def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends()
-):
-    _password = form_data.password
-    payload={
-        # JWT "sub" Claim : https://openid-foundation-japan.github.io/draft-ietf-oauth-json-web-token-11.ja.html#subDef
-        "sub": form_data.username,
-        "scopes": [],
-        "exp": datetime.now() + timedelta(minutes=60)
-    }
 
-    # トークンの生成
-    token_secret_key = "123456789"
-    access_token = jwt.encode(payload, token_secret_key, algorithm="HS256")
+@app.post("/api/new_password")
+def new_password(
+    data: NewPasswordRequest,
+    cognito_idp_client = Depends(get_cognito_idp_client),
+):
+    secret_hash = env.get_secret_hash(data.username)
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/admin_set_user_password.html
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/respond_to_auth_challenge.html
+    response = cognito_idp_client.respond_to_auth_challenge(
+        ChallengeName="NEW_PASSWORD_REQUIRED",
+        ClientId=env.cognito_client_id,
+        ChallengeResponses={
+            "USERNAME": data.username,
+            "NEW_PASSWORD": data.new_password,
+            "SECRET_HASH": secret_hash,
+        },
+        Session=data.session,
+    )
+
+    if "AuthenticationResult" not in response or "IdToken" not in response["AuthenticationResult"]:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    access_token = create_token(data.username)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.post("/api/token")
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    cognito_idp_client = Depends(get_cognito_idp_client),
+):
+    username = form_data.username
+    password = form_data.password
+
+    try:
+        secret_hash = env.get_secret_hash(username)
+        # Cognitoから認証情報取得
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/initiate_auth.html
+        response = cognito_idp_client.initiate_auth(
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={
+                "USERNAME": username,
+                "PASSWORD": password,
+                "SECRET_HASH": secret_hash,
+            },
+            ClientId=env.cognito_client_id,
+        )
+    except cognito_idp_client.exceptions.NotAuthorizedException as e:
+        print("{}\n{}".format(str(e), traceback.format_exc()))
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    # NOTE: admin_create_userで作成したユーザーは初回ログイン時にパスワード変更が必要
+    if "ChallengeName" in response and response["ChallengeName"] == "NEW_PASSWORD_REQUIRED":
+        return {"status": "NEW_PASSWORD_REQUIRED", "session": response["Session"]}
+
+    if "AuthenticationResult" not in response or "IdToken" not in response["AuthenticationResult"]:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+
+    access_token = create_token(username)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+####################################
+# 静的ファイル
+####################################
 # html=True : パスの末尾が "/" の時に自動的に index.html をロードする
 # name="static" : FastAPIが内部的に利用する名前を付けます
 app.mount("/static", StaticFiles(directory=f"/opt/app/static", html=True), name="static")
