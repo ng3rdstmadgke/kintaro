@@ -48,6 +48,14 @@ variable "app_service_account" {
   default = "*"
 }
 
+variable "cognito_user_pool_id" {
+  type = string
+}
+
+variable "cognito_client_id" {
+  type = string
+}
+
 variable "kms_admin_list" {
   type = list(string)
   default = []
@@ -68,8 +76,8 @@ output "keda_operator_role_arn" {
 output "app_role_arn" {
   value = aws_iam_role.timecard_job.arn
 }
-output"aws_kms_key_id" {
-  value = aws_kms_key.this.key_id
+output"secret_name" {
+  value = aws_secretsmanager_secret.app.name
 }
 
 locals {
@@ -130,6 +138,7 @@ resource "aws_dynamodb_table" "users" {
 
 /**
  * KMS
+ *   - ジョブカンパスワード暗号化用
  */
 # KMSキーの作成
 resource "aws_kms_key" "this" {
@@ -172,6 +181,35 @@ resource "aws_kms_key" "this" {
   tags = {
     Name = "${local.app_name}-${local.stage}"
   }
+}
+
+/**
+ * Cognito User Pool
+ *   - ユーザー認証用
+ */
+data "aws_cognito_user_pool_client" "this" {
+  client_id    = var.cognito_client_id
+  user_pool_id = var.cognito_user_pool_id
+}
+
+/**
+ * SecretsManager 
+ *   - アプリケーションの秘密情報を管理する
+ */
+resource "aws_secretsmanager_secret" "app" {
+  name = "/${local.app_name}/${local.stage}/app"
+  recovery_window_in_days = 0
+  force_overwrite_replica_secret = true
+}
+
+resource "aws_secretsmanager_secret_version" "app" {
+  secret_id = aws_secretsmanager_secret.app.id
+  secret_string = jsonencode({
+    cognito_user_pool_id=var.cognito_user_pool_id
+    cognito_client_id=data.aws_cognito_user_pool_client.this.client_id
+    cognito_client_secret=data.aws_cognito_user_pool_client.this.client_secret
+    kms_key_id = aws_kms_key.this.key_id
+  })
 }
 
 

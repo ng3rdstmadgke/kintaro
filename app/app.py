@@ -9,7 +9,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from lib.app.env import get_env, Environment
 from lib.app.auth import get_current_user, create_token
 from lib.app.schema import TimeCardSetting, NewPasswordRequest
-from lib.app.util import get_dynamo_client, get_cognito_idp_client
+from lib.app.util import (
+    get_dynamo_client,
+    get_cognito_idp_client,
+    get_secret_value,
+    get_secret_hash,
+)
 
 env = get_env()
 
@@ -98,14 +103,19 @@ def update_timecard(
 def update_password(
     data: NewPasswordRequest,
     cognito_idp_client = Depends(get_cognito_idp_client),
+    secret_value = Depends(get_secret_value),
 ):
     try:
-        secret_hash = env.get_secret_hash(data.username)
+        secret_hash = get_secret_hash(
+            data.username,
+            secret_value.cognito_client_id,
+            secret_value.cognito_client_secret
+        )
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/admin_set_user_password.html
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/respond_to_auth_challenge.html
         response = cognito_idp_client.respond_to_auth_challenge(
             ChallengeName="NEW_PASSWORD_REQUIRED",
-            ClientId=env.cognito_client_id,
+            ClientId=secret_value.cognito_client_id,
             ChallengeResponses={
                 "USERNAME": data.username,
                 "NEW_PASSWORD": data.new_password,
@@ -128,12 +138,17 @@ def update_password(
 def get_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     cognito_idp_client = Depends(get_cognito_idp_client),
+    secret_value = Depends(get_secret_value),
 ):
     username = form_data.username
     password = form_data.password
 
     try:
-        secret_hash = env.get_secret_hash(username)
+        secret_hash = get_secret_hash(
+            username,
+            secret_value.cognito_client_id,
+            secret_value.cognito_client_secret
+        )
         # Cognitoから認証情報取得
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cognito-idp/client/initiate_auth.html
         response = cognito_idp_client.initiate_auth(
@@ -143,7 +158,7 @@ def get_access_token(
                 "PASSWORD": password,
                 "SECRET_HASH": secret_hash,
             },
-            ClientId=env.cognito_client_id,
+            ClientId=secret_value.cognito_client_id,
         )
     except cognito_idp_client.exceptions.NotAuthorizedException as e:
         print("{}\n{}".format(str(e), traceback.format_exc()))
