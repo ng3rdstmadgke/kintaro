@@ -9,6 +9,7 @@ class Environment (BaseSettings):
     cognito_user_pool_id: str
     cognito_client_id: str
     cognito_client_secret: str
+    kms_key_id: str
     token_secret_key: str ="123456789"
     app_name: str = "kintaro"
     stage_name: str = "local"

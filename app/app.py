@@ -71,6 +71,8 @@ def get_timecard(
     current_user = Depends(get_current_user)
 ):
     _, current_setting = current_user
+    decrypted = current_setting.decrypt_jobcan_password()
+    current_setting.jobcan_password = decrypted
     return current_setting
 
 
@@ -81,13 +83,14 @@ def update_timecard(
     dynamo_client = Depends(get_dynamo_client),
     env: Environment = Depends(get_env),
 ):
-    username, current_setting = current_user
+    username, _ = current_user
     table_name = f"{env.app_name}-{env.stage_name}-Users"
     timecard_setting = TimeCardSetting.model_dump_json(data)
     dynamo_client.put_item(
         TableName=table_name,
         Item={ "username": {"S": username}, "setting": {"S": timecard_setting} }
     )
+    data.jobcan_password = data.decrypt_jobcan_password()
     return data
 
 
