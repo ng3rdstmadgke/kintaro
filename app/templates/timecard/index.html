@@ -25,14 +25,22 @@
         v-model="timecard.jobcan_id">
       <label for="jobcanId">ジョブカンID</label>
     </div>
-    <div class="form-floating mb-3">
+    <div class="form-floating input-group mb-3">
       <input
-        type="password"
+        :type="inputType"
         required
         class="form-control"
         id="jobcanPassword"
         v-model="timecard.jobcan_password">
       <label for="jobcanPassword">ジョブカンPassword</label>
+      <button
+        class="btn btn-outline-secondary"
+        type="button"
+        @click="inputType = (inputType === 'password' ? 'text' : 'password')"
+        id="button-addon2">
+        <!-- Bootstrapで使えるアイコン: https://icons.getbootstrap.jp/ -->
+        <i :class="inputType === 'text' ? 'bi bi-eye' : 'bi bi-eye-slash'"></i>
+      </button>
     </div>
 
     <div class="input-group mb-3" v-for="[k, setting] in Object.entries(timecard.setting)">
@@ -60,6 +68,7 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function () {
 const { createApp, ref } = Vue
 
 const app = createApp({
@@ -68,6 +77,8 @@ const app = createApp({
     if (!AuthUtil.authenticated()) {
       location.href = '/login';
     }
+
+    const inputType = ref('password')
 
     // 現状の設定を取得
     const timecard = ref({"enabled": false, "setting": {}})
@@ -93,6 +104,7 @@ const app = createApp({
 
     return {
       timecard,
+      inputType,
       submit,
     }
   },
@@ -102,5 +114,6 @@ const app = createApp({
   delimiters: ['[[', ']]']
 })
 app.mount('#app')
+})
 </script>
 {% endblock %}
