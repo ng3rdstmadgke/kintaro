@@ -48,6 +48,11 @@ variable "app_service_account" {
   default = "*"
 }
 
+variable "kms_admin_list" {
+  type = list(string)
+  default = []
+}
+
 output "app_ecr_repository" {
   value = aws_ecr_repository.app.repository_url
 }
@@ -62,6 +67,9 @@ output "keda_operator_role_arn" {
 }
 output "app_role_arn" {
   value = aws_iam_role.timecard_job.arn
+}
+output"aws_kms_key_id" {
+  value = aws_kms_key.this.key_id
 }
 
 locals {
@@ -117,6 +125,52 @@ resource "aws_dynamodb_table" "users" {
   attribute {
     name = "username"
     type = "S"
+  }
+}
+
+/**
+ * KMS
+ */
+# KMSキーの作成
+resource "aws_kms_key" "this" {
+  description = "${local.app_name}-${local.stage}"
+  deletion_window_in_days = 10
+
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Id": "key-default-1",
+    "Statement": [
+      {
+        "Sid": "Enable IAM User Permissions",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": var.kms_admin_list
+        },
+        "Action": "kms:*",
+        "Resource": "*"
+      },
+      {
+        "Sid": "Allow use of the key",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": [
+            aws_iam_role.timecard_job.arn,
+          ]
+        },
+        "Action": [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ],
+        "Resource": "*"
+      }
+    ]
+  })
+
+  tags = {
+    Name = "${local.app_name}-${local.stage}"
   }
 }
 
