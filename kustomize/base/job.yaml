@@ -55,10 +55,14 @@ spec:
           image: kintaro/app
           command: ["poetry", "run", "python", "job.py"]
           env:
+          - name: DYNAMO_TABLE_NAME  # ※ terraformのoutputの dynamodb_table_name に修正
+            value: UsersTable
+          - name: SECRET_NAME  # ※ terraformのoutputの secret_name に修正
+            value: SecretName
+          - name: APP_BUCKET
+            value: BucketName
           - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
             value: JobQueueUrl
-          - name: APP_BUCKET  # ※ terraformのoutputの app_sqs_url に修正
-            value: BucketName
   triggers:
   # AWS SQS Queue: Triggerhttps://keda.sh/docs/2.14/scalers/aws-sqs/
   - type: aws-sqs-queue

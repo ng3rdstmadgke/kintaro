@@ -13,10 +13,14 @@ spec:
           image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:latest
           command: ["poetry", "run", "python", "job.py"]
           env:
+          - name: DYNAMO_TABLE_NAME
+            value: "kintaro-prd-users"
+          - name: SECRET_NAME
+            value: "/kintaro/prd/app"
+          - name: APP_BUCKET
+            value: kintaro-app
           - name: SQS_URL
             value: "https://sqs.ap-northeast-1.amazonaws.com/674582907715/kintaro-prd-TimecardJobQueue"
-          - name: APP_BUCKET  # ※ terraformのoutputの app_sqs_url に修正
-            value: kintaro-app
   triggers:
   - type: aws-sqs-queue
     metadata:

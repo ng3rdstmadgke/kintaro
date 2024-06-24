@@ -80,7 +80,10 @@ output "keda_operator_role_arn" {
 output "app_role_arn" {
   value = aws_iam_role.timecard_job.arn
 }
-output"secret_name" {
+output "dynamodb_table_name" {
+  value = aws_dynamodb_table.users.name
+}
+output "secret_name" {
   value = aws_secretsmanager_secret.app.name
 }
 
@@ -368,6 +371,34 @@ resource "aws_iam_policy" "timecard_job" {
           aws_sqs_queue.timecard_job_queue.arn
         ]
       },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "secretsmanager:GetSecretValue",
+        ],
+        "Resource": [
+          aws_secretsmanager_secret.app.arn
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "kms:Decrypt",
+          "kms:Encrypt",
+        ],
+        "Resource": [
+          aws_kms_key.this.arn
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "dynamodb:*",
+        ],
+        "Resource": [
+          aws_dynamodb_table.users.arn
+        ]
+      }
     ]
   })
 }
