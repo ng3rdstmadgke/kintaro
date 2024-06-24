@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 import boto3
 from selenium import webdriver
@@ -16,6 +17,7 @@ class Environment(BaseSettings):
     app_bucket: str
     sqs_url: str
     aws_region: str = "ap-northeast-1"
+    debug: bool = False
 
 # メッセージをパースして表示
 class SqsMessageBody(BaseModel):
@@ -104,12 +106,19 @@ def main(env: Environment, secret_value: SecretValue, sqs_message_body: SqsMessa
 
 if __name__ == "__main__":
     env = Environment()
-
     secret_value = get_secret_value_factory(env.secret_name, env.aws_region)()
 
-    sqs_message_body = sqs_receive_message(env.sqs_url, env.aws_region)
-
-    if sqs_message_body is None:
-        exit()
+    if env.debug:
+        args = sys.argv
+        jobcan_username = args[1]
+        jobcan_password = args[2]
+        sqs_message_body = SqsMessageBody(
+            username=jobcan_username,
+            password=jobcan_password
+        )
+    else:
+        sqs_message_body = sqs_receive_message(env.sqs_url, env.aws_region)
+        if sqs_message_body is None:
+            exit()
 
     main(env, secret_value, sqs_message_body)
