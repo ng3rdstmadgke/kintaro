@@ -12,7 +12,7 @@ spec:
           serviceAccountName: timecard-crawler  # crawlerを実行するサービスアカウント
           containers:
           - name: timecard-crawler
-            image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:latest
+            image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:20240624.2356
             command: ["poetry", "run", "python", "crawler.py"]
             env:
             - name: DYNAMO_TABLE_NAME
