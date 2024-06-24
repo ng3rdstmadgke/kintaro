@@ -33,6 +33,10 @@ variable "oidc_provider" {
   type = string
 }
 
+variable "vpc_id" {
+  type = string
+}
+
 variable "keda_namespace" {
   type = string
   default = "keda"
@@ -85,6 +89,9 @@ output "dynamodb_table_name" {
 }
 output "secret_name" {
   value = aws_secretsmanager_secret.app.name
+}
+output "app_alb_sg" {
+  value = aws_security_group.app_alb.tags["Name"]
 }
 
 locals {
@@ -189,6 +196,36 @@ resource "aws_kms_key" "this" {
     Name = "${local.app_name}-${local.stage}"
   }
 }
+
+/**
+ * ALB のセキュリティグループ
+ */
+resource "aws_security_group" "app_alb" {
+  name        = "${local.app_name}-${local.stage}-AppAlb"
+  description = "Allow HTTP access."
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "Allow HTTP access."
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "${local.app_name}-${local.stage}-AppAlb"
+  }
+}
+
 
 /**
  * Cognito User Pool

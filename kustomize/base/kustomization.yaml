@@ -6,4 +6,6 @@ kind: Kustomization
 # resources: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/resource/
 resources:
 # 全環境共通の定義が記述されたマニフェストファイルを指定
+- namespace.yaml
 - job.yaml
+- app.yaml

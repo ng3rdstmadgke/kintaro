@@ -63,6 +63,12 @@ kubectl apply -k ${CONTAINER_PROJECT_ROOT}/kustomize/overlays/prd/
 # 主要なリソース一覧
 kubectl get all -n kintaro-prd
 
+# ALBのURLを確認 
+$ kubectl get ing -n kintaro-prd
+NAME      CLASS   HOSTS   ADDRESS                                                                     PORTS   AGE
+ingress   alb     *       k8s-producti-ingress-xxxxxxxxxx-xxxxxxxx.ap-northeast-1.elb.amazonaws.com   80      26m
+
+
 # scaledjobリソースの一覧
 $ kubectl get scaledjob -n kintaro-prd
 NAME           MIN   MAX   TRIGGERS        AUTHENTICATION                      READY   ACTIVE   PAUSED    AGE
@@ -82,6 +88,11 @@ $ kubectl describe triggerauthentication <trigger-authentication-name> -n kintar
 
 # ■ 動作確認
 
+## Web
+
+ブラウザで `http://k8s-producti-ingress-xxxxxxxxxx-xxxxxxxx.ap-northeast-1.elb.amazonaws.com` にアクセス
+
+## バッチジョブ
 ```bash
 cd $CONTAINER_PROJECT_ROOT
 

@@ -1,12 +1,5 @@
 ---
-# ネームスペース
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: kintaro-default
-
----
-# timecard-job(アプリ)を実行するサービスアカウント
+# timecard-job(バッチ)を実行するサービスアカウント
 apiVersion: v1
 kind: ServiceAccount
 metadata:
