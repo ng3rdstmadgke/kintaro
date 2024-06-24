@@ -16,7 +16,7 @@ REGION=ap-northeast-1
 #
 awslocal dynamodb create-table \
   --region ${REGION} \
-  --table-name ${APP_NAME}-${STAGE_NAME}-Users \
+  --table-name ${APP_NAME}-${STAGE_NAME}-users \
   --attribute-definitions AttributeName=username,AttributeType=S \
   --key-schema AttributeName=username,KeyType=HASH \
   --billing-mode PAY_PER_REQUEST

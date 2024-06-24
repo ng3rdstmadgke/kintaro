@@ -124,7 +124,7 @@ resource "aws_sqs_queue" "timecard_job_queue" {
  */
 
 resource "aws_dynamodb_table" "users" {
-  name = "${local.app_name}-${local.stage}-Users"
+  name = "${local.app_name}-${local.stage}-users"
   billing_mode   = "PAY_PER_REQUEST"
 
   hash_key       = "username"

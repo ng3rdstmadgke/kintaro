@@ -56,7 +56,7 @@ def get_secret_hash(username: str, cognito_client_id: str, cognito_client_secret
 def get_encrypt_kms(kms_key_id: str, aws_region: str) -> Callable[[str], str]:
     kms_client = boto3.client('kms', region_name=aws_region)
     def encrypt_kms(data: str) -> str:
-        if  data.startswith("@encrypted@"):
+        if  data.startswith("@encrypted@") or data == "":
             return data
         response = kms_client.encrypt(KeyId=kms_key_id, Plaintext=data.encode())
         ciphertext_blob = response["CiphertextBlob"]
@@ -69,7 +69,7 @@ encrypt_kms = get_encrypt_kms(get_secret_value().kms_key_id, get_env().aws_regio
 def get_decrypt_kms(aws_region: str) -> Callable[[str], str]:
     kms_client = boto3.client('kms', region_name=aws_region)
     def decrypt_kms(data: str) -> str:
-        if not data.startswith("@encrypted@"):
+        if not data.startswith("@encrypted@") or data == "":
             return data
         decrypt_response = kms_client.decrypt(
             CiphertextBlob=base64.b64decode(data.replace("@encrypted@", ""))

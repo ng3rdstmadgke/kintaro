@@ -25,8 +25,10 @@ def create_token(username: str, env: Environment = get_env()) -> str:
     return jwt.encode(payload, env.token_secret_key, algorithm="HS256")
 
 def get_setting_or_default(dynamo_client, username: str, env: Environment) -> TimeCardSetting:
-    table_name = f"{env.app_name}-{env.stage_name}-Users"
-    item = dynamo_client.get_item(TableName=table_name, Key={"username": {"S": username}})
+    item = dynamo_client.get_item(
+        TableName=env.dynamo_table_name,
+        Key={"username": {"S": username}}
+    )
     try:
         timecard_setting = item["Item"]["setting"]["S"]
         return TimeCardSetting.model_validate_json(timecard_setting)

@@ -89,10 +89,9 @@ def update_timecard(
     env: Environment = Depends(get_env),
 ):
     username, _ = current_user
-    table_name = f"{env.app_name}-{env.stage_name}-Users"
     timecard_setting = TimeCardSetting.model_dump_json(data)
     dynamo_client.put_item(
-        TableName=table_name,
+        TableName=env.dynamo_table_name,
         Item={ "username": {"S": username}, "setting": {"S": timecard_setting} }
     )
     data.jobcan_password = data.decrypt_jobcan_password()
