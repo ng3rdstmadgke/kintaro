@@ -1,24 +1,23 @@
-from typing import Callable
+from lib.common.model import TimeCardSetting
 
-from pydantic import BaseModel
-import boto3
-
-#
-# SecretsManager
-#
-class SecretValue(BaseModel):
-    jobcan_client_code: str
-    cognito_user_pool_id: str
-    cognito_client_id: str
-    cognito_client_secret: str
-    kms_key_id: str
-    token_secret_key: str
-
-def get_secret_value_factory(secret_name: str, aws_region: str) -> Callable[[], SecretValue]:
-    client = boto3.client('secretsmanager', region_name=aws_region)
-    def get_secret_value():
-        response = client.get_secret_value(
-            SecretId=secret_name
-        )
-        return SecretValue.model_validate_json(response['SecretString'])
-    return get_secret_value
+def get_setting_or_default(dynamodb_client, dynamo_table_name: str, username: str) -> TimeCardSetting:
+    item = dynamodb_client.get_item(
+        TableName=dynamo_table_name,
+        Key={"username": {"S": username}}
+    )
+    try:
+        timecard_setting = item["Item"]["setting"]["S"]
+        return TimeCardSetting.model_validate_json(timecard_setting)
+    except KeyError:
+        return TimeCardSetting.model_validate({
+          "enabled": False,
+          "jobcan_id": "",
+          "jobcan_password": "",
+          "setting": {
+              "Mon": {"clock_in": "09:00", "clock_out": "18:00"},
+              "Tue": {"clock_in": "09:00", "clock_out": "18:00"},
+              "Wed": {"clock_in": "09:00", "clock_out": "18:00"},
+              "Thu": {"clock_in": "09:00", "clock_out": "18:00"},
+              "Fri": {"clock_in": "09:00", "clock_out": "18:00"},
+          }
+        })

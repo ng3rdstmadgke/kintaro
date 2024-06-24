@@ -10,6 +10,7 @@ boto3 = "^1.34.121"
 fastapi = {extras = ["all"], version = "^0.111.0"}
 uvicorn = {extras = ["standard"], version = "^0.30.1"}
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+jpholiday = "^0.1.10"
 
 
 [build-system]

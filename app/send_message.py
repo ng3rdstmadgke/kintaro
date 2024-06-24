@@ -1,6 +1,9 @@
+import sys
 import json
 import boto3
 from pydantic_settings import BaseSettings
+
+username = sys.argv[1]
 
 class Environment(BaseSettings):
     jobcan_username: str
@@ -15,8 +18,7 @@ sqs_client = boto3.client('sqs', region_name="ap-northeast-1")
 response = sqs_client.send_message(
     QueueUrl=env.sqs_url,
     MessageBody=json.dumps({
-        "username": env.jobcan_username,
-        "password": env.jobcan_password
+        "username": username
     }, ensure_ascii=False)
 )
 print(response)

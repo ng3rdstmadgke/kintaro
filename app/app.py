@@ -6,15 +6,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordRequestForm
 
-from lib.app.env import get_env, Environment
-from lib.app.auth import get_current_user, create_token
-from lib.app.schema import TimeCardSetting, NewPasswordRequest
-from lib.app.util import (
-    get_dynamo_client,
-    get_cognito_idp_client,
-    get_secret_value,
-    get_secret_hash,
-)
+from lib.env import get_env, Environment
+from lib.common.secrets import get_secret_value
+from lib.common.model import TimeCardSetting
+from lib.app.auth import get_current_user, create_token, get_secret_hash
+from lib.app.schema import NewPasswordRequest
+from lib.app.util import get_dynamodb_client, get_cognito_idp_client
 
 env = get_env()
 
@@ -85,7 +82,7 @@ def get_timecard(
 def update_timecard(
     data: TimeCardSetting,
     current_user = Depends(get_current_user),
-    dynamo_client = Depends(get_dynamo_client),
+    dynamo_client = Depends(get_dynamodb_client),
     env: Environment = Depends(get_env),
 ):
     username, _ = current_user

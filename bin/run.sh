@@ -9,9 +9,14 @@ cat >&2 <<EOS
 
 [args]
   MODE:
-    job    : jobを起動
-    app    : webアプリコンテナを起動
-    shell  : コンテナにshellでログイン
+    job <USERNAME>:
+      jobを起動
+    app:
+      webアプリコンテナを起動
+    crawler:
+      crawlerを起動
+    shell:
+      コンテナにshellでログイン
 
 [options]
  -h | --help:
@@ -39,11 +44,17 @@ while [ "$#" != 0 ]; do
   shift
 done
 
-[ "${#args[@]}" != 1 ] && usage
+[ "${#args[@]}" -lt 1 ] && usage
 MODE="${args[0]}"
+USERNAME="${args[1]}"
 
 if [[ ! "$MODE" =~ ^(shell|job|crawler|app)$ ]]; then
   echo "--mode には shell, job, crawler, app のいずれかを指定してください" >&2
+  exit 1
+fi
+
+if [ "$MODE" = "job" ] && [ -z "$USERNAME" ]; then
+  echo "job モードの場合は USERNAME を指定してください" >&2
   exit 1
 fi
 
@@ -61,15 +72,19 @@ docker build \
   -t $PROJECT_NAME/app:latest \
   .
 
-
 OPTIONS=
 if [ "$MODE" = "shell" ]; then
   CMD="/bin/bash"
 elif [ "$MODE" = "job" ]; then
-  CMD="poetry run python job.py $JOBCAN_USERNAME $JOBCAN_PASSWORD"
+  CMD="poetry run python job.py $USERNAME"
 elif [ "$MODE" = "app" ]; then
   CMD="poetry run uvicorn app:app --workers 2 --host 0.0.0.0 --port 8080 --reload"
   OPTIONS="$OPTIONS -p 8080:8080 --name ${PROJECT_NAME}-app"
+elif [ "$MODE" = "crawler" ]; then
+  CMD="poetry run python crawler.py"
+else
+  echo "不正なモードです" >&2
+  exit 1
 fi
 
 # docker network

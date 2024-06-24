@@ -81,6 +81,7 @@ $ kubectl describe triggerauthentication <trigger-authentication-name> -n kintar
 ```
 
 # ■ 動作確認
+
 ```bash
 cd $CONTAINER_PROJECT_ROOT
 
@@ -88,7 +89,7 @@ cd $CONTAINER_PROJECT_ROOT
 watch -n1 kubectl get all -n kintaro-prd
 
 # sqsにメッセージを投げ込む
-./bin/send-queue.sh
+./bin/send-queue.sh <DynamoDBに登録してあるユーザー名>
 
 # ログ確認
 kubectl logs <pod_name> -n kintaro-prd

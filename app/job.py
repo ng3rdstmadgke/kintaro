@@ -4,26 +4,15 @@ import boto3
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 
-from lib.common.util import get_secret_value_factory, SecretValue
-
-
-# 環境変数
-class Environment(BaseSettings):
-    dynamo_table_name: str
-    secret_name: str
-    app_bucket: str
-    sqs_url: str
-    aws_region: str = "ap-northeast-1"
-    debug: bool = False
+from lib.common.secrets import get_secret_value_factory, SecretValue
+from lib.common.util import get_setting_or_default
+from lib.env import Environment, get_env
 
 # メッセージをパースして表示
 class SqsMessageBody(BaseModel):
     username: str
-    password: str
-
 
 def sqs_receive_message(sqs_url: str, aws_region: str) -> Optional[SqsMessageBody]:
     # SQSクライアントの生成
@@ -51,37 +40,39 @@ def sqs_receive_message(sqs_url: str, aws_region: str) -> Optional[SqsMessageBod
     return SqsMessageBody.model_validate_json(messages[0]["Body"])
 
 
-def main(env: Environment, secret_value: SecretValue, sqs_message_body: SqsMessageBody):
+
+def main(env: Environment, secret_value: SecretValue, jobcan_username: str, jobcan_password: str):
     # 打刻処理
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # ヘッドレスモードを有効にする
     chrome_options.add_argument("--disable-gpu")  # 可能であればGPUの使用を無効にする
     chrome_options.add_argument("--no-sandbox")    # サンドボックスモードを無効にする（特定の環境で必要）
-
     driver = webdriver.Chrome(options=chrome_options)
-    driver.get("https://ssl.jobcan.jp/jbcoauth/login")
 
+    # ログイン画面にアクセス
+    driver.get("https://ssl.jobcan.jp/jbcoauth/login")
     driver.implicitly_wait(1)
 
+    # クライアントコードの入力フォームを開く
     client_code_btn = driver.find_element(By.ID, "client_code_link")
     client_code_btn.click()
-
     driver.implicitly_wait(1)
 
+    # ログイン情報の入力
     username = driver.find_element(By.ID, "user_email")  # ユーザー名入力欄のname属性を指定
     client_code = driver.find_element(By.ID, "user_client_code")  # ユーザー名入力欄のname属性を指定
     password = driver.find_element(By.ID, "user_password")  # パスワード入力欄のname属性を指定
-
-    username.send_keys(sqs_message_body.username)
+    username.send_keys(jobcan_username)
     client_code.send_keys(secret_value.jobcan_client_code)
-    password.send_keys(sqs_message_body.password)
+    password.send_keys(jobcan_password)
 
+    # ログインボタンのクリック
     login_button = driver.find_element(By.ID, "login_button")  # ログインボタンのname属性を指定
     login_button.click()
     driver.implicitly_wait(3)
-
     driver.save_screenshot("tmp/login.png")
 
+    # 勤怠ページに異動
     driver.get("https://ssl.jobcan.jp/jbcoauth/login")
 
     driver.save_screenshot("tmp/kintai.png")
@@ -90,35 +81,40 @@ def main(env: Environment, secret_value: SecretValue, sqs_message_body: SqsMessa
     #adit_btn = driver.find_element(By.ID, "adit-button-push")
     #adit_btn.click()
     # driver.implicitly_wait(3)
-
     driver.save_screenshot("tmp/adit.png")
 
+    # S3にスクリーンショットをアップロード
     s3_client = boto3.client('s3', region_name=env.aws_region)
-
     screenshots = ["tmp/login.png", "tmp/kintai.png", "tmp/adit.png"]
     for screenshot in screenshots:
         s3_key = f"kintaro/{screenshot}"
         with open(screenshot, "rb") as f:
             s3_client.put_object(Bucket=env.app_bucket, Key=s3_key, Body=f)
 
+    # ページタイトルを表示
     title = driver.title
     print(title)
 
 if __name__ == "__main__":
-    env = Environment()
+    env = get_env()
     secret_value = get_secret_value_factory(env.secret_name, env.aws_region)()
 
     if env.debug:
         args = sys.argv
         jobcan_username = args[1]
-        jobcan_password = args[2]
         sqs_message_body = SqsMessageBody(
             username=jobcan_username,
-            password=jobcan_password
         )
     else:
         sqs_message_body = sqs_receive_message(env.sqs_url, env.aws_region)
         if sqs_message_body is None:
             exit()
+    
+    dynamodb_client = boto3.client('dynamodb', region_name=env.aws_region)
+    setting = get_setting_or_default(
+        dynamodb_client,
+        env.dynamo_table_name,
+        sqs_message_body.username,
+    )
 
-    main(env, secret_value, sqs_message_body)
+    main(env, secret_value, setting.jobcan_id, setting.decrypt_jobcan_password())
