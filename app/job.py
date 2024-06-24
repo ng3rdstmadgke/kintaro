@@ -41,7 +41,12 @@ def sqs_receive_message(sqs_url: str, aws_region: str) -> Optional[SqsMessageBod
 
 
 
-def main(env: Environment, secret_value: SecretValue, jobcan_username: str, jobcan_password: str):
+def main(
+    env: Environment,
+    secret_value: SecretValue,
+    jobcan_username: str,
+    jobcan_password: str
+):
     # 打刻処理
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # ヘッドレスモードを有効にする
@@ -78,9 +83,10 @@ def main(env: Environment, secret_value: SecretValue, jobcan_username: str, jobc
     driver.save_screenshot("tmp/kintai.png")
 
     # 退勤ボタンをクリック
-    #adit_btn = driver.find_element(By.ID, "adit-button-push")
-    #adit_btn.click()
-    # driver.implicitly_wait(3)
+    if not env.debug:
+        adit_btn = driver.find_element(By.ID, "adit-button-push")
+        adit_btn.click()
+        driver.implicitly_wait(3)
     driver.save_screenshot("tmp/adit.png")
 
     # S3にスクリーンショットをアップロード
@@ -109,7 +115,9 @@ if __name__ == "__main__":
         sqs_message_body = sqs_receive_message(env.sqs_url, env.aws_region)
         if sqs_message_body is None:
             exit()
-    
+
+    print(f"username: {sqs_message_body.username}")
+
     dynamodb_client = boto3.client('dynamodb', region_name=env.aws_region)
     setting = get_setting_or_default(
         dynamodb_client,

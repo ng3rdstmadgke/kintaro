@@ -37,11 +37,14 @@ def scan_dynamo_table(dynamo_client, table_name) -> List[Dict[str, Any]]:
 
 
 def main(env: Environment, secret_value: SecretValue, dynamodb_client, now: datetime):
-    now_minute = (now.minute // 5) * 5  # 5分単位に丸める
-    now = now.replace(minute=now_minute, second=0, microsecond=0)
-    now_five_minutes_later = now + timedelta(minutes=5)
-    print(f"now: {now}, now_five_minutes_later: {now_five_minutes_later}, weekday: {now.weekday()}")
+    begine = now.replace(
+        minute=(now.minute // 5) * 5,  # 5分単位に丸める
+        second=0,
+        microsecond=0
+    )
+    end = begine + timedelta(minutes=5)
     is_holiday = jpholiday.is_holiday(now)
+    print(f"begine: {begine}, end: {end}, weekday: {now.weekday()}, is_holiday: {is_holiday}")
     weekday = now.weekday()
     if is_holiday or weekday >= 5:  # 土日祝日なら終了
         print("Today is holiday or weekend")
@@ -71,20 +74,22 @@ def main(env: Environment, secret_value: SecretValue, dynamodb_client, now: date
             else:
                 continue
             clock_in_time = datetime.strptime(clock_in, "%H:%M")
-            clock_in_datetime = now.replace(hour=clock_in_time.hour, minute=clock_in_time.minute, second=0, microsecond=0)
+            clock_in_datetime = begine.replace(hour=clock_in_time.hour, minute=clock_in_time.minute, second=0, microsecond=0)
             print(f"clock_in_datetime: {clock_in_datetime}")
 
             clock_out_time = datetime.strptime(clock_out, "%H:%M")
-            clock_out_datetime = now.replace(hour=clock_out_time.hour, minute=clock_out_time.minute, second=0, microsecond=0)
+            clock_out_datetime = begine.replace(hour=clock_out_time.hour, minute=clock_out_time.minute, second=0, microsecond=0)
             print(f"clock_out_datetime: {clock_out_datetime}")
 
             message = SqsMessageBody(username=username)
-            if (clock_in_datetime >= now and clock_in_datetime < now_five_minutes_later):
-                print(f"{username} 出勤")
+            if (clock_in_datetime >= begine and clock_in_datetime < end):
+                print(f"{username}: 出勤")
                 sqs_send_message(env.sqs_url, env.aws_region, message)
-            if (clock_out_datetime >= now and clock_out_datetime < now_five_minutes_later):
-                print(f"{username} 退勤")
+            elif (clock_out_datetime >= begine and clock_out_datetime < end):
+                print(f"{username}: 退勤")
                 sqs_send_message(env.sqs_url, env.aws_region, message)
+            else:
+                print(f"{username}: スキップ")
         except Exception as e:
             print("{}\n{}".format(str(e), traceback.format_exc()))
             # TODO: 通知
