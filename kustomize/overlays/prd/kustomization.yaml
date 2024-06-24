@@ -17,6 +17,8 @@ namespace: kintaro-prd
 # patches: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/patches/
 #   - Patch using Path Strategic Merge: https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/patches/#patch-using-path-strategic-merge
 patches:
+- path: crawler_service_account.patch.yaml
+- path: crawler_cronjob.patch.yaml
 - path: app_service_account.patch.yaml
 - path: app_deployment.patch.yaml
 - path: job_scaled_job.patch.yaml

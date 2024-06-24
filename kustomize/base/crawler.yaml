@@ -1,0 +1,41 @@
+---
+# timecard-appを実行するサービスアカウント
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: timecard-crawler
+  annotations:
+    # terraformのoutputの app_role_arn に修正
+    eks.amazonaws.com/role-arn: ApplicationRoleArn
+
+---
+# CronJob: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
+# CronJob API Reference: https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/cron-job-v1/
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: timecard-crawler  # リソース名 (名前空間内で一意でなければならない)
+spec:
+  timeZone: Asia/Tokyo  # タイムゾーン
+  schedule: "*/5 * * * 1-5"  # 平日のみ5分間隔で実行
+  startingDeadlineSeconds: 180  # CronJobの開始時刻から180秒以内に実行されなかった場合は実行されない
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: timecard-crawler  # crawlerを実行するサービスアカウント
+          containers:
+          - name: timecard-crawler
+            image: kintaro/app
+            command: ["poetry", "run", "python", "crawler.py"]
+            env:
+            - name: DYNAMO_TABLE_NAME  # ※ terraformのoutputの dynamodb_table_name に修正
+              value: UsersTable
+            - name: SECRET_NAME  # ※ terraformのoutputの secret_name に修正
+              value: SecretName
+            - name: APP_BUCKET
+              value: BucketName
+            - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
+              value: JobQueueUrl
+            imagePullPolicy: Always  # デプロイされるたびに常に最新のイメージを取得 (default)
+          restartPolicy: OnFailure  # コンテナがエラー（非ゼロ終了ステータス）で終了した場合のみ再起動します。

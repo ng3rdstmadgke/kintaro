@@ -9,3 +9,4 @@ resources:
 - namespace.yaml
 - job.yaml
 - app.yaml
+- crawler.yaml
