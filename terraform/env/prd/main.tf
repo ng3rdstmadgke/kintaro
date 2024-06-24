@@ -48,6 +48,10 @@ variable "app_service_account" {
   default = "*"
 }
 
+variable "jobcan_client_code" {
+  type = string
+}
+
 variable "cognito_user_pool_id" {
   type = string
 }
@@ -193,6 +197,19 @@ data "aws_cognito_user_pool_client" "this" {
 }
 
 /**
+ * Random Password
+ *   - トークン生成用の秘密鍵
+ */
+resource "random_password" "token_secret_key" {
+  length           = 64
+  min_upper        = 4
+  min_lower        = 4
+  min_numeric      = 4
+  min_special      = 4
+  special          = true
+}
+
+/**
  * SecretsManager 
  *   - アプリケーションの秘密情報を管理する
  */
@@ -205,10 +222,12 @@ resource "aws_secretsmanager_secret" "app" {
 resource "aws_secretsmanager_secret_version" "app" {
   secret_id = aws_secretsmanager_secret.app.id
   secret_string = jsonencode({
+    jobcan_client_code=var.jobcan_client_code
     cognito_user_pool_id=var.cognito_user_pool_id
     cognito_client_id=data.aws_cognito_user_pool_client.this.client_id
     cognito_client_secret=data.aws_cognito_user_pool_client.this.client_secret
     kms_key_id = aws_kms_key.this.key_id
+    token_secret_key = random_password.token_secret_key.result
   })
 }
 

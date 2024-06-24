@@ -8,12 +8,12 @@ from jose import jwt, JWTError
 
 from lib.app.env import get_env, Environment
 from lib.app.schema import TimeCardSetting
-from lib.app.util import get_dynamo_client
+from lib.app.util import get_dynamo_client, get_secret_value
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 
-def create_token(username: str, env: Environment = get_env()) -> str:
+def create_token(username: str, token_secret_key: str) -> str:
     payload={
         # JWT "sub" Claim : https://openid-foundation-japan.github.io/draft-ietf-oauth-json-web-token-11.ja.html#subDef
         "sub": username,
@@ -22,7 +22,7 @@ def create_token(username: str, env: Environment = get_env()) -> str:
     }
 
     # トークンの生成
-    return jwt.encode(payload, env.token_secret_key, algorithm="HS256")
+    return jwt.encode(payload, token_secret_key, algorithm="HS256")
 
 def get_setting_or_default(dynamo_client, username: str, env: Environment) -> TimeCardSetting:
     item = dynamo_client.get_item(
@@ -57,8 +57,9 @@ def get_current_user(
         headers={"WWW-Authenticate": "Bearer"}
     )
     try:
+        secret_value = get_secret_value()
         # JWTのデコードと電子署名のチェックを行う
-        payload = jwt.decode(token, env.token_secret_key, algorithms=["HS256"])
+        payload = jwt.decode(token, secret_value.token_secret_key, algorithms=["HS256"])
         # デコードされたJWTのペイロードからusernameを取得
         username = payload["sub"]
     except JWTError as e:

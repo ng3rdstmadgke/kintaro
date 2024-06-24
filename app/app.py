@@ -129,7 +129,7 @@ def update_password(
     if "AuthenticationResult" not in response or "IdToken" not in response["AuthenticationResult"]:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    access_token = create_token(data.username)
+    access_token = create_token(data.username, secret_value.token_secret_key)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -170,7 +170,7 @@ def get_access_token(
     if "AuthenticationResult" not in response or "IdToken" not in response["AuthenticationResult"]:
         raise HTTPException(status_code=401, detail="Incorrect username or password")
 
-    access_token = create_token(username)
+    access_token = create_token(username, secret_value.token_secret_key)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
