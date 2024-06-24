@@ -6,8 +6,6 @@ from pydantic_settings import BaseSettings
 username = sys.argv[1]
 
 class Environment(BaseSettings):
-    jobcan_username: str
-    jobcan_password: str
     sqs_url: str
 
 env = Environment()

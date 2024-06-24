@@ -52,6 +52,7 @@ def main(env: Environment, secret_value: SecretValue, dynamodb_client, now: date
     for item in scan_dynamo_table(dynamodb_client, env.dynamo_table_name):
         try:
             username = item["username"]["S"]
+            print(f"=== === === {username} === === ===")
             setting = TimeCardSetting.model_validate_json(item["setting"]["S"])
             if not setting.enabled:
                 continue

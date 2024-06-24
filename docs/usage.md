@@ -4,7 +4,7 @@
 aws eks --region ap-northeast-1 update-kubeconfig --name eks-work-prd
 ```
 
-# ■ terraform
+# ■ terraformデプロイ
 
 ```bash
 cd ${CONTAINER_PROJECT_ROOT}/terraform/env/prd
@@ -17,6 +17,7 @@ cd ${CONTAINER_PROJECT_ROOT}/terraform/env/prd
 aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
 
 # oidc_provider変数を定義
+cp secrets.auto.tfvars.sample secrets.auto.tfvars
 vim secrets.auto.tfvars
 ```
 
@@ -50,7 +51,7 @@ helm install keda kedacore/keda \
   --create-namespace
 ```
 
-# ■ デプロイ
+# ■ Kubenetesリソースのデプロイ
 
 ```bash
 cd $CONTAINER_PROJECT_ROOT
@@ -91,6 +92,10 @@ $ kubectl describe triggerauthentication <trigger-authentication-name> -n kintar
 ## Web
 
 ブラウザで `http://k8s-producti-ingress-xxxxxxxxxx-xxxxxxxx.ap-northeast-1.elb.amazonaws.com` にアクセス
+
+## crawler
+
+なし
 
 ## バッチジョブ
 ```bash

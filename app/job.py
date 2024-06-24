@@ -1,5 +1,8 @@
+import os
 import sys
 from typing import Optional
+from datetime import datetime
+
 import boto3
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -44,7 +47,7 @@ def sqs_receive_message(sqs_url: str, aws_region: str) -> Optional[SqsMessageBod
 def main(
     env: Environment,
     secret_value: SecretValue,
-    jobcan_username: str,
+    jobcan_id: str,
     jobcan_password: str
 ):
     # 打刻処理
@@ -67,7 +70,7 @@ def main(
     username = driver.find_element(By.ID, "user_email")  # ユーザー名入力欄のname属性を指定
     client_code = driver.find_element(By.ID, "user_client_code")  # ユーザー名入力欄のname属性を指定
     password = driver.find_element(By.ID, "user_password")  # パスワード入力欄のname属性を指定
-    username.send_keys(jobcan_username)
+    username.send_keys(jobcan_id)
     client_code.send_keys(secret_value.jobcan_client_code)
     password.send_keys(jobcan_password)
 
@@ -87,13 +90,16 @@ def main(
         adit_btn = driver.find_element(By.ID, "adit-button-push")
         adit_btn.click()
         driver.implicitly_wait(3)
+        print("勤怠ボタンをクリックしました")
     driver.save_screenshot("tmp/adit.png")
 
     # S3にスクリーンショットをアップロード
     s3_client = boto3.client('s3', region_name=env.aws_region)
     screenshots = ["tmp/login.png", "tmp/kintai.png", "tmp/adit.png"]
+    datetime_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     for screenshot in screenshots:
-        s3_key = f"kintaro/{screenshot}"
+        s3_key = f"kintaro/{jobcan_id}/{datetime_str}/{os.path.basename(screenshot)}"
+        print(f"uploading screenshot to s3://{env.app_bucket}/{s3_key}")
         with open(screenshot, "rb") as f:
             s3_client.put_object(Bucket=env.app_bucket, Key=s3_key, Body=f)
 
@@ -107,16 +113,16 @@ if __name__ == "__main__":
 
     if env.debug:
         args = sys.argv
-        jobcan_username = args[1]
+        username = args[1]
         sqs_message_body = SqsMessageBody(
-            username=jobcan_username,
+            username=username,
         )
     else:
         sqs_message_body = sqs_receive_message(env.sqs_url, env.aws_region)
         if sqs_message_body is None:
             exit()
 
-    print(f"username: {sqs_message_body.username}")
+    print(f"=== === === {sqs_message_body.username} === === ===")
 
     dynamodb_client = boto3.client('dynamodb', region_name=env.aws_region)
     setting = get_setting_or_default(
