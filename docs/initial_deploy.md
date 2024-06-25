@@ -4,6 +4,16 @@
 aws eks --region ap-northeast-1 update-kubeconfig --name eks-work-prd
 ```
 
+# ■ AWSリソースの手動作成
+
+## スクリーンショット保存用のS3バケットを作成
+
+`kintaro-app`
+
+## Cognitoユーザープール・クライアントの作成
+
+terraformの変数としてユーザープールIDとクライアントIDが必要なので手動で作成します。
+
 # ■ terraformデプロイ
 
 ```bash
@@ -18,8 +28,33 @@ aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issu
 
 # oidc_provider変数を定義
 cp secrets.auto.tfvars.sample secrets.auto.tfvars
-vim secrets.auto.tfvars
 ```
+
+```ini:secrets.auto.tfvars
+vpc_id = "vpc-xxxxxxxxxxxxxxxxx"
+# OIDC Provier の取得: aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
+oidc_provider = "oidc.eks.ap-northeast-1.amazonaws.com/id/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# ジョブカンのクライアントコード
+jobcan_client_code = "xxxxxxxxxxxxxxxxxxxx"
+
+# cognitoのユーザープールID
+cognito_user_pool_id = "ap-northeast-1_xxxxxxxxx"
+
+# cognitoのユーザープールに紐づくクライアントID
+cognito_client_id = "xxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+
+# kmsの操作を許可するユーザー・ロールを指定します。 (デバッグ用途)
+kms_admin_list = [
+  "arn:aws:iam::xxxxxxxxxxxx:root",
+  "arn:aws:iam::xxxxxxxxxxxx:user/xxxxxxxxx",
+  "arn:aws:iam::xxxxxxxxxxxx:role/xxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+```
+
+デプロイ
+
 
 ```bash
 terraform init
@@ -52,6 +87,42 @@ helm install keda kedacore/keda \
 ```
 
 # ■ Kubenetesリソースのデプロイ
+
+以下のファイルを更新します
+
+- App 関連
+  - `kustomize/overlays/prd/app_deployment.patch.yaml`
+    - イメージタグ
+    - 環境変数
+      - `DYNAMO_TABLE_NAME` : terraformのoutputの `dynamodb_table_name`
+      - `SECRET_NAME` : terraformのoutputの `secret_name`
+      - `APP_BUCKET` : 手動作成した、スクリーンショット保存用S3バケットを指定
+      - `SQS_URL` : terraformのoutputの `app_sqs_url`
+  - `kustomize/overlays/prd/app_service_account.patch.yaml`
+    - IAM Role に terraformのoutputの `app_role_arn` を指定
+- Job 関連
+  - `kustomize/overlays/prd/job_scaled_job.patch.yaml`
+    - イメージタグ
+    - 環境変数
+      - `DYNAMO_TABLE_NAME` : terraformのoutputの `dynamodb_table_name`
+      - `SECRET_NAME` : terraformのoutputの `secret_name`
+      - `APP_BUCKET` : 手動作成した、スクリーンショット保存用S3バケットを指定
+      - `SQS_URL` : terraformのoutputの `app_sqs_url`
+  - `kustomize/overlays/prd/job_service_account.patch.yaml`
+    - IAM Role に terraformのoutputの `app_role_arn` を指定
+  - `kustomize/overlays/prd/job_trigger_authentication.patch.yaml`
+    - roleArn に terraformのoutputの `keda_trigger_auth` を指定
+      - KEDAがtriggerとして利用するSQSにアクセスするためのIAM Role
+- Crawler 関連
+  - `kustomize/overlays/prd/crawler_cronjob.patch.yaml`
+    - イメージタグ
+    - 環境変数
+      - `DYNAMO_TABLE_NAME` : terraformのoutputの `dynamodb_table_name`
+      - `SECRET_NAME` : terraformのoutputの `secret_name`
+      - `APP_BUCKET` : 手動作成した、スクリーンショット保存用S3バケットを指定
+      - `SQS_URL` : terraformのoutputの `app_sqs_url`
+  - `kustomize/overlays/prd/crawler_service_account.patch.yaml`
+    - IAM Role に terraformのoutputの `app_role_arn` を指定
 
 ```bash
 cd $CONTAINER_PROJECT_ROOT

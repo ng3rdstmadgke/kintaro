@@ -7,4 +7,5 @@ metadata:
 spec:
   podIdentity:
     provider: aws
+    # KEDAがtriggerとして利用するSQSにアクセスするためのIAM Role
     roleArn: arn:aws:iam::674582907715:role/kintaro-prd-KedaTriggerAuthRole
