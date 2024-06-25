@@ -10,7 +10,7 @@ spec:
       spec:
         containers:
         - name: timecard-job
-          image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:20240624.2356
+          image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app:20240625.1355
           command: ["poetry", "run", "python", "job.py"]
           env:
           - name: DYNAMO_TABLE_NAME
