@@ -2,7 +2,7 @@ import traceback
 
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -177,3 +177,7 @@ def get_access_token(
 # html=True : パスの末尾が "/" の時に自動的に index.html をロードする
 # name="static" : FastAPIが内部的に利用する名前を付けます
 app.mount("/static", StaticFiles(directory=f"/opt/app/static", html=True), name="static")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")

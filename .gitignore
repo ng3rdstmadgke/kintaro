@@ -1,5 +1,4 @@
 **/.env
-*.png
 tmp/
 **/.terraform
 **/secrets.auto.tfvars
