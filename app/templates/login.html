@@ -43,7 +43,6 @@
       </div>
     </div>
   </div>
-
 </div>
 
 <script>
@@ -69,7 +68,7 @@ const app = createApp({
       })
       if (!response.ok) {
         console.error(response.statusText)
-        alert(`ログインに失敗しました: ${response.statusText}`)
+        AlertComponent.error(`ログインに失敗しました。ユーザー名またはパスワードが間違っています。`)
         return
       }
       let json = await response.json()

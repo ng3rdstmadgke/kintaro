@@ -10,6 +10,8 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <!-- Utility -->
   <script src="/static/js/utils.js"></script>
+  <script src="/static/js/component.js"></script>
+  <link rel="stylesheet" href="/static/css/common.css">
 
   {% block head %}
   {% endblock %}
@@ -38,6 +40,11 @@
         </div>
       </div>
     </nav>
+    <div class="hp_fixed_alert_wrapper">
+      <div class="px-3" id="js_kintaro_alert" >
+
+      </div>
+    </div>
 
     <!-- Content -->
     <div class="container mt-3">

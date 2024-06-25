@@ -86,7 +86,7 @@ const app = createApp({
       timecard.value = json
     }).catch(err => {
       console.error(err)
-      alert(`エラーが発生しました: ${err}`)
+      AlertComponent.error(`タイムカード設定の取得に失敗しました`)
     })
 
     // 設定の更新
@@ -94,10 +94,10 @@ const app = createApp({
       FetchUtil.post('/api/timecard', timecard.value)
       .then(json => {
         timecard.value = json
-        alert('更新しました')
+        AlertComponent.success(`タイムカード設定を更新しました`)
       }).catch(err => {
         console.error(err)
-        alert(`更新に失敗しました: ${err}`)
+        AlertComponent.error(`タイムカード設定の更新に失敗しました`)
       })
     }
 
