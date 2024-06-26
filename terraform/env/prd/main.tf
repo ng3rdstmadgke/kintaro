@@ -29,17 +29,12 @@ data "aws_caller_identity" "self" { }
 data "aws_region" "self" {}
 
 variable "oidc_provider" {
-  # 取得コマンド: aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
+  # 取得コマンド: aws eks describe-cluster --name クラスタ名 --query "cluster.identity.oidc.issuer" --output text
   type = string
 }
 
 variable "vpc_id" {
   type = string
-}
-
-variable "keda_namespace" {
-  type = string
-  default = "keda"
 }
 
 variable "app_namespace" {
@@ -68,6 +63,9 @@ variable "kms_admin_list" {
   type = list(string)
   default = []
 }
+variable "keda_operator_role_arn" {
+  type = string
+}
 
 output "app_ecr_repository" {
   value = aws_ecr_repository.app.repository_url
@@ -77,9 +75,6 @@ output "app_sqs_url" {
 }
 output "keda_trigger_auth_role_arn" {
   value = aws_iam_role.keda_trigger_auth.arn
-}
-output "keda_operator_role_arn" {
-  value = aws_iam_role.keda_operator.arn
 }
 output "app_role_arn" {
   value = aws_iam_role.timecard_job.arn
@@ -282,7 +277,7 @@ resource "aws_iam_role" "keda_trigger_auth" {
     "Statement": {
       "Effect": "Allow",
       "Principal": {
-        AWS = aws_iam_role.keda_operator.arn
+        AWS = var.keda_operator_role_arn
       },
       "Action": "sts:AssumeRole",
     }
@@ -311,53 +306,6 @@ resource "aws_iam_policy" "keda_trigger_auth" {
 resource "aws_iam_role_policy_attachment" "keda_trigger_auth" {
   role = aws_iam_role.keda_trigger_auth.name
   policy_arn = aws_iam_policy.keda_trigger_auth.arn
-}
-
-/**
- * KEDA Operator が利用するIAM Role
- * KedaTriggerAuthRole へのAssumeRole権限を持つ
- */
-resource "aws_iam_role" "keda_operator" {
-  name = "${local.app_name}-${local.stage}-KedaOperatorRole"
-  assume_role_policy = jsonencode({
-    "Version": "2012-10-17"
-    "Statement": {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/${var.oidc_provider}"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "${var.oidc_provider}:sub": "system:serviceaccount:${var.keda_namespace}:keda-operator",
-          "${var.oidc_provider}:aud": "sts.amazonaws.com"
-        }
-      }
-    }
-  })
-}
-
-resource "aws_iam_policy" "keda_operator" {
-  name = "${local.app_name}-${local.stage}-KedaOperatorPolicy"
-  policy = jsonencode({
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Action": [
-          "sts:AssumeRole",
-        ],
-        "Resource": [
-          aws_iam_role.keda_trigger_auth.arn
-        ]
-      },
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "keda_operator" {
-  role = aws_iam_role.keda_operator.name
-  policy_arn = aws_iam_policy.keda_operator.arn
 }
 
 

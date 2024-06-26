@@ -1,7 +1,8 @@
 # ■ update-kubeconfig
 
 ```bash
-aws eks --region ap-northeast-1 update-kubeconfig --name eks-work-prd
+CLUSTER_NAME="xxxxxxxxxx"
+aws eks --region ap-northeast-1 update-kubeconfig --name $CLUSTER_NAME
 ```
 
 # ■ AWSリソースの手動作成
@@ -24,7 +25,7 @@ cd ${CONTAINER_PROJECT_ROOT}/terraform/env/prd
 
 ```bash
 # OIDC Providerの取得
-aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
+aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text
 
 # oidc_provider変数を定義
 cp secrets.auto.tfvars.sample secrets.auto.tfvars
@@ -32,7 +33,7 @@ cp secrets.auto.tfvars.sample secrets.auto.tfvars
 
 ```ini:secrets.auto.tfvars
 vpc_id = "vpc-xxxxxxxxxxxxxxxxx"
-# OIDC Provier の取得: aws eks describe-cluster --name eks-work-prd --query "cluster.identity.oidc.issuer" --output text
+# OIDC Provier の取得: aws eks describe-cluster --name $CLUSTER_NAME --query "cluster.identity.oidc.issuer" --output text
 oidc_provider = "oidc.eks.ap-northeast-1.amazonaws.com/id/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 # ジョブカンのクライアントコード

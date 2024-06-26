@@ -44,7 +44,10 @@ spec:
         - containerPort: 8080
 
 ---
-# ALBからのトラフィックはNodePortを経由してPodに到達するため、NodePortを指定する
+# ALBからのトラフィックはNodePort(ClusterIP)を経由してPodに到達するため、NodePortを指定する
+# ClusterIP:
+#   ClusterIPはクラスタ内のPodに対してのみアクセス可能な仮想IPアドレスを提供します。
+#   https://www.ios-net.co.jp/blog/20230621-1179/#ClusterIP_%E3%81%A8%E3%81%AF
 # NodePort:
 #   NodePortはClusterIPに加えて、各ノードの指定されたポートを開放します。
 #   https://www.ios-net.co.jp/blog/20230621-1179/#NodePort%E3%81%A8%E3%81%AF
@@ -57,7 +60,8 @@ spec: # ServiceSpec: https://kubernetes.io/docs/reference/kubernetes-api/service
     - port: 8080
       targetPort: 8080
       protocol: TCP
-  type: NodePort
+  #type: NodePort
+  type: ClusterIP  # Fargateの場合はClusterIPを指定
   selector:
     # このセレクタにマッチするラベルキーと値を持つポッドにサービストラフィックをルーティングします。
     app: timecard-app
@@ -79,8 +83,9 @@ metadata:
     #     - instance (default)
     #       ALBからのトラフィックはNodePortを経由してPodに到達する
     #     - ip
-    #       ALBからのトラフィックを直接Pod IPにルーティングする
-    alb.ingress.kubernetes.io/target-type: instance
+    #       ALBからのトラフィックを直接Pod IPにルーティングする (EKS Fargateの場合は ip を指定)
+    #alb.ingress.kubernetes.io/target-type: instance
+    alb.ingress.kubernetes.io/target-type: ip  # Fargateの場合はipを指定
 
     # LBにアタッチしたいセキュリティグループをidもしくはNameタグで指定します。
     #   - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/annotations/#security-groups

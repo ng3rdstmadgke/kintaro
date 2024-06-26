@@ -66,23 +66,3 @@ spec:
       queueLength: "1"  # 一つのpodが処理するメッセージ数
     authenticationRef:
       name: keda-trigger-auth-aws-credentials
-
----
-# 動作確認用サンプルジョブ
-# https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/
-#apiVersion: batch/v1
-#kind: Job
-#metadata:
-#  name: sample-job
-#spec:
-#  ttlSecondsAfterFinished: 60  # ジョブの完了後に削除されるまでの秒数
-#  backoffLimit: 1  # 失敗時のリトライ回数
-#  # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/#JobSpec
-#  template:
-#    spec:
-#      serviceAccountName: timecard-job
-#      containers:
-#      - name: sample-job
-#        image: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/xxx/app:latest
-#        command: ["aws", "s3", "ls"]
-#      restartPolicy: Never  # コンテナの再起動設定。DeploymentならAlways, JobならNeverかOnFailure
