@@ -67,6 +67,10 @@ async def timecard(request: Request):
 def healthcheck():
     return {"status": "Healthy"}
 
+@app.get("/api/hello")
+def hello():
+    return {"message": "hello"}
+
 
 @app.get("/api/timecard", response_model=TimeCardSetting)
 def get_timecard(
