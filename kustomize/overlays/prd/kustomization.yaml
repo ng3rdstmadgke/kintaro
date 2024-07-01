@@ -28,3 +28,6 @@ patches:
 # baseのkustomization.yamlが存在するディレクトリの相対パスを指定
 resources:
 - ../../base
+images:
+- name: 674582907715.dkr.ecr.ap-northeast-1.amazonaws.com/kintaro/prd/app
+  newTag: e216a6b3dcea733d8f88d378418438168174a90c
