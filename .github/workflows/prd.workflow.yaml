@@ -1,0 +1,100 @@
+# ワークフローを起動するイベント
+# mainブランチに対して、app/ , docker/app/ ディレクトリのプルリクエストのクローズが発生したときに発火
+# on - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+    # Filter pattern cheat sheet - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
+    - "app/**"
+    - "docker/app/**"
+    # on.<event_name>.types - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onevent_nametypes
+    # Events that trigger workflows (event=pull_request): https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+    types: [closed]
+
+# permissions - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#permissions
+permissions: write-all
+
+name: prd Build and Push an Image to ECR
+
+# 環境変数定義
+# env - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#env
+env:
+  AWS_DEFAULT_REGION: ap-northeast-1
+  AWS_REGION: ap-northeast-1
+  AWS_DEFAULT_OUTPUT: json
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  APP_NAME: kintaro
+
+# パイプラインで実行したい一連のジョブ
+# jobs - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobs
+jobs:
+  build-and-push:
+    name: prd Build and Push
+
+    # プルリクエストがマージされたときのみ実行する
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#running-your-pull_request-workflow-when-a-pull-request-merges
+    if: github.event.pull_request.merged == true
+
+    # ランナーの指定
+    runs-on: ubuntu-latest
+
+    # jobs.<job_id>.steps - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idsteps
+    steps:
+
+    # mainブランチにチェックアウト
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        token: ${{secrets.GITHUB_TOKEN}}
+
+    # AWSのRoleを引き受ける
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/kintaro-prd-GitHubActionsRole
+        aws-region: ap-northeast-1
+
+    # ECRにログイン
+    - name: Login to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # Dockerイメージのビルド
+    - name: Build and tag the image
+      run: |
+          CONTAINER_IMAGE=$APP_NAME/prd/app:${{ github.sha }}
+          docker build \
+            -f docker/app/Dockerfile \
+            -t $CONTAINER_IMAGE \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE .
+
+    # kustomize.yamlの修正。先ほどビルドしたDockerイメージのタグを起動イメージに設定。
+    - name: Set image tag
+      run: |
+          cd kustomize/overlays/prd
+          CONTAINER_IMAGE=$APP_NAME/prd/app:${{ github.sha }}
+          kustomize edit set image $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
+          cat kustomization.yaml
+
+    # 変更をコミット
+    - name: Commit kustomization
+      run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -a -m "$APP_NAME[prd]: ${{ github.sha }}"
+
+    # ECRにDockerイメージをpush
+    - name: Docker Push
+      run: |
+        CONTAINER_IMAGE=$APP_NAME/prd/app:${{ github.sha }}
+        docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
+
+    # mainブランチに変更をpush
+    - name: Git push changes to main
+      uses: ad-m/github-push-action@master
+      with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          force: true
