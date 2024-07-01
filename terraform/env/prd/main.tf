@@ -66,6 +66,12 @@ variable "kms_admin_list" {
 variable "keda_operator_role_arn" {
   type = string
 }
+variable "github_user" {
+  type = string
+}
+variable "github_app_repository_name" {
+  type = string
+}
 
 output "app_ecr_repository" {
   value = aws_ecr_repository.app.repository_url
@@ -391,4 +397,97 @@ resource "aws_iam_policy" "timecard_job" {
 resource "aws_iam_role_policy_attachment" "timecard_job" {
   role = aws_iam_role.timecard_job.name
   policy_arn = aws_iam_policy.timecard_job.arn
+}
+
+/**
+ * GitHub ActionsがAWSリソースにOIDC認証でアクセスできるようにするためのIDプロバイダを作成します。
+ * 
+ * 参考
+ *   - GitHub Actions で OIDC を使用して AWS 認証を行う | Zenn
+ *     https://zenn.dev/kou_pg_0131/articles/gh-actions-oidc-aws
+ *   - AWSの「IDプロバイダーとフェデレーション」の仕組みを利用して、GoogleアカウントでAWSを利用・操作してみた
+ *     https://note.com/shift_tech/n/nf5eb16948de1
+ *   - IAM ロールを使用して GitHub アクションを AWS のアクションに接続する | AWS セキュリティブログ
+ *     https://aws.amazon.com/jp/blogs/security/use-iam-roles-to-connect-github-actions-to-actions-in-aws/
+ */
+// GitHub ActionsのOIDCプロバイダの信頼性を検証するための証明書を取得
+/**
+data "tls_certificate" "github_actions" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+// AWSにGitHub ActionsのOIDCプロバイダを登録します。
+// これによりAWSはGitHub Actionsからの認証リクエストを信頼し、適切なIAMロールへのアクセスを許可することができます。
+resource "aws_iam_openid_connect_provider" "github" {
+  // GitHub ActionsのOIDCプロバイダのURL
+  url             = "https://token.actions.githubusercontent.com"
+  // GitHub Actionsに発行された信頼されるクライアントID
+  client_id_list  = ["sts.amazonaws.com"]
+  // 信頼される証明書のフィンガープリント
+  // GitHubActionsのOIDCプロバイダの信頼性を検証するための証明書のSHA-1フィンガープリント
+  thumbprint_list = [data.tls_certificate.github_actions.certificates[0].sha1_fingerprint]
+
+  tags = {
+    Name = "GitHubActionsProvider"
+  }
+}
+*/
+
+resource "aws_iam_role" "github_actions" {
+  name = "${local.app_name}-${local.stage}-GitHubActionsRole"
+  assume_role_policy = jsonencode({
+    "Version": "2012-10-17"
+    "Statement": {
+      "Effect": "Allow",
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Principal": {
+        // GitHub ActionsのOIDCプロバイダのARN
+        "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Condition": {
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:${var.github_user}/${var.github_app_repository_name}:*",
+        }
+      }
+    }
+  })
+}
+
+
+resource "aws_iam_policy" "github_actions" {
+  name = "${local.app_name}-${local.stage}-ECRPushPolicy"
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:CompleteLayerUpload",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart",
+        ],
+        "Resource": [
+          aws_ecr_repository.app.arn,
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecr:GetAuthorizationToken",
+        ],
+        "Resource": [
+          "*"
+        ]
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.github_actions.arn
 }
