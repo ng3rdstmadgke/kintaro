@@ -28,16 +28,28 @@ spec:
       containers: # Container: https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#Container
       - name: timecard-app
         image: kintaro/app
-        command: [poetry", "run", "uvicorn", "app:app", "--workers", "2", "--host", "0.0.0.0", "--port", "8080"]
+        command: ["poetry", "run", "uvicorn", "app:app", "--workers", "2", "--host", "0.0.0.0", "--port", "8080"]
         env:
         - name: DYNAMO_TABLE_NAME  # ※ terraformのoutputの dynamodb_table_name に修正
-          value: UsersTable
+          valueFrom:
+            configMapKeyRef:
+              name: timecard-env
+              key: DYNAMO_TABLE_NAME
         - name: SECRET_NAME  # ※ terraformのoutputの secret_name に修正
-          value: SecretName
+          valueFrom:
+            configMapKeyRef:
+              name: timecard-env
+              key: SECRET_NAME
         - name: APP_BUCKET
-          value: BucketName
+          valueFrom:
+            configMapKeyRef:
+              name: timecard-env
+              key: APP_BUCKET
         - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
-          value: JobQueueUrl
+          valueFrom:
+            configMapKeyRef:
+              name: timecard-env
+              key: SQS_URL
         imagePullPolicy: Always  # デプロイされるたびに常に最新のイメージを取得 (default)
         ports:
         - containerPort: 8080
@@ -48,6 +60,10 @@ spec:
           requests:
             memory: 500Mi
             cpu: 250m
+      volumes:
+        - name: env
+          configMap:
+            name: timecard-env
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

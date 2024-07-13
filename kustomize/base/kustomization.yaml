@@ -10,3 +10,4 @@ resources:
 - job.yaml
 - app.yaml
 - crawler.yaml
+- configmap.yaml

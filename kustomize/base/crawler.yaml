@@ -18,6 +18,7 @@ metadata:
 spec:
   timeZone: Asia/Tokyo  # タイムゾーン
   schedule: "*/5 * * * 1-5"  # 平日のみ5分間隔で実行
+  #schedule: "*/1 * * * *"  # 平日のみ5分間隔で実行
   startingDeadlineSeconds: 180  # CronJobの開始時刻から180秒以内に実行されなかった場合は実行されない
   jobTemplate:
     spec:
@@ -30,12 +31,28 @@ spec:
             command: ["poetry", "run", "python", "crawler.py"]
             env:
             - name: DYNAMO_TABLE_NAME  # ※ terraformのoutputの dynamodb_table_name に修正
-              value: UsersTable
+              valueFrom:
+                configMapKeyRef:
+                  name: timecard-env
+                  key: DYNAMO_TABLE_NAME
             - name: SECRET_NAME  # ※ terraformのoutputの secret_name に修正
-              value: SecretName
+              valueFrom:
+                configMapKeyRef:
+                  name: timecard-env
+                  key: SECRET_NAME
             - name: APP_BUCKET
-              value: BucketName
+              valueFrom:
+                configMapKeyRef:
+                  name: timecard-env
+                  key: APP_BUCKET
             - name: SQS_URL  # ※ terraformのoutputの app_sqs_url に修正
-              value: JobQueueUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: timecard-env
+                  key: SQS_URL
             imagePullPolicy: Always  # デプロイされるたびに常に最新のイメージを取得 (default)
           restartPolicy: OnFailure  # コンテナがエラー（非ゼロ終了ステータス）で終了した場合のみ再起動します。
+          volumes:
+            - name: env
+              configMap:
+                name: timecard-env
