@@ -15,7 +15,6 @@ kind: Deployment
 metadata:
   name: timecard-app  # リソース名 (名前空間内で一意でなければならない)
 spec:
-  replicas: 2
   selector:
     matchLabels:
       # このラベルと一致する spec.template.metadata.labels を持つ Pod がレプリカセットの対象となる
@@ -42,6 +41,33 @@ spec:
         imagePullPolicy: Always  # デプロイされるたびに常に最新のイメージを取得 (default)
         ports:
         - containerPort: 8080
+        resources:
+          limits:
+            memory: 500Mi
+            cpu: 500m  # 1000m = 1 core
+          requests:
+            memory: 500Mi
+            cpu: 250m
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: timecard-app-hpa
+spec:  # https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/#HorizontalPodAutoscalerSpec
+  # スケール対象のリソースの種類と名前を指定
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: timecard-app
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:  # 必要なレプリカ数を決定するためのメトリクスのリスト
+  - type: Resource  # ContainerResource, External, Object, Pods, Resource のいずれかを指定
+    resource:  # type が Resource の場合の設定項目
+      name: cpu  # メトリクス名。他にはmemoryが指定可能
+      target:  # メトリクスの目標値。この目標値を維持すようにレプリカ数が調整される。
+        type: Utilization  # Utilization(使用率), Value(値), AverageValue(平均値) のいずれかを指定
+        averageUtilization: 80  # メトリクスの目標値(全ポッドの平均値(%))。 resourceメトリックソースタイプに対してのみ有効。
 
 ---
 # ALBからのトラフィックはNodePort(ClusterIP)を経由してPodに到達するため、NodePortを指定する
@@ -60,57 +86,57 @@ spec: # ServiceSpec: https://kubernetes.io/docs/reference/kubernetes-api/service
     - port: 8080
       targetPort: 8080
       protocol: TCP
-  #type: NodePort
-  type: ClusterIP  # Fargateの場合はClusterIPを指定
+  type: NodePort
   selector:
     # このセレクタにマッチするラベルキーと値を持つポッドにサービストラフィックをルーティングします。
     app: timecard-app
 
 ---
-# Ingress: https://kubernetes.io/ja/docs/concepts/services-networking/ingress/
+# Ingress | Kubernetes API Reference:
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.26/#ingress-v1-networking-k8s-io
+# Ingress | AWS Load Balancer Controller:
+# https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress
+  name: timecard-app-alb
+  # Ingress annotations - AWS Load Balancer Controller
+  # https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/guide/ingress/annotations/
   annotations:
-    # 外部LB(internet-facing)にするか、内部LB(internal)にするか
-    #   - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/annotations/#scheme
-    #   - https://docs.aws.amazon.com/elasticloadbalancing/latest/userguide/how-elastic-load-balancing-works.html#load-balancer-scheme
+    # Ingressが属するグループ名。同じグループを指定すると、同じALBにIngressが紐づけられます。 (デフォルトではどのグループにも属さない)
+    alb.ingress.kubernetes.io/group.name: baseport-prd
+    # 外部ALB (internet-facing | internal)
     alb.ingress.kubernetes.io/scheme: internet-facing
+    # Podへのトラフィックのルーティング方法を指定
+    # - instance (default): ALBからのトラフィックはNodePortを経由してPodに到達する
+    # - ip: ALBからのトラフィックをClusterIPを利用して直接Podにルーティングする (EKS Fargateの場合は ip でなければならない)
+    alb.ingress.kubernetes.io/target-type: instance
+    # 外部ALBなのでパブリックサブネットを指定
+    alb.ingress.kubernetes.io/subnets: subnet-09413df8c627eeb8a,subnet-0199662ef38b21935,subnet-0d29de524d3d61515
+    # リスナーのポートにhttp:80とhttps:443を指定
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # すべてのHTTPリスナーをHTTPSにリダイレクトさせる設定
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # *.prd.baseport.net の証明書
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:xxxxxxxxxxxx:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    # すべてのCIDRからのトラフィックを許可
+    # security-groups の指定がない場合、コントローラはinbound-cidrsとlisten-portsからのアクセスを許可するsgを自動的に作成する。
+    # Node, Podのセキュリティグループは自動作成されたsgからのインバウンドトラフィックを許可するように変更される。
+    alb.ingress.kubernetes.io/inbound-cidrs: 0.0.0.0/0
 
-    # Podへのトラフィックのルーティング方法を指定します。
-    #   - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/annotations/#target-type
-    #     - instance (default)
-    #       ALBからのトラフィックはNodePortを経由してPodに到達する
-    #     - ip
-    #       ALBからのトラフィックを直接Pod IPにルーティングする (EKS Fargateの場合は ip を指定)
-    #alb.ingress.kubernetes.io/target-type: instance
-    alb.ingress.kubernetes.io/target-type: ip  # Fargateの場合はipを指定
-
-    # LBにアタッチしたいセキュリティグループをidもしくはNameタグで指定します。
-    #   - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/annotations/#security-groups
-    alb.ingress.kubernetes.io/security-groups: kintaro-prd-AppAlb
-
-    # このアノテーションは alb.ingress.kubernetes.io/security-groups でSGを指定した場合にのみ適用されます。
-    # true に設定すると、コントローラはロードバランサに追加の共有バックエンドセキュリティグループをアタッチします。
-    # このバックエンドセキュリティグループは Node/Pod セキュリティグループルールで使われます。
-    #   - https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.7/guide/ingress/annotations/#manage-backend-security-group-rules
-    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "true"
+    # Custom attributes - Annotation | AWS Load Balancer Controller:
+    # https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/guide/ingress/annotations/#custom-attributes
+    alb.ingress.kubernetes.io/healthcheck-path: /api/healthcheck
 spec:
-  defaultBackend:  # Spec内で指定されているパスに一致しないようなリクエストのためのバックエンド
-    service:
-      name: timecard-app
-      port:
-        number: 8080
-        
   ingressClassName: alb
   rules:
-    - http:
+    - host: kintaro.prd.baseport.net
+      http:
         paths:
-        - path: /
-          pathType: Prefix
-          backend:
-            service:
-              name: timecard-app
-              port:
-                number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: timecard-app
+                port:
+                  number: 8080

@@ -1,0 +1,11 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: timecard-app-alb
+  # Ingress annotations - AWS Load Balancer Controller
+  # https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.4/guide/ingress/annotations/
+  annotations:
+    # Ingressが属するグループ名。同じグループを指定すると、同じALBにIngressが紐づけられます。 (デフォルトではどのグループにも属さない)
+    alb.ingress.kubernetes.io/group.name: baseport-prd
+    # *.prd.baseport.net の証明書
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-1:674582907715:certificate/014a4206-443a-4780-8f22-06f491c57f03

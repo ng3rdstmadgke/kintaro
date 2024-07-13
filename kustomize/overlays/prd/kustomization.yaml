@@ -21,6 +21,7 @@ patches:
 - path: crawler_cronjob.patch.yaml
 - path: app_service_account.patch.yaml
 - path: app_deployment.patch.yaml
+- path: app_ingress.patch.yaml
 - path: job_scaled_job.patch.yaml
 - path: job_service_account.patch.yaml
 - path: job_trigger_authentication.patch.yaml

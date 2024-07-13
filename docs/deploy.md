@@ -1,15 +1,13 @@
 # ■ terraformデプロイ
 ```bash
-cd ${CONTAINER_PROJECT_ROOT}/terraform/env/prd
-terraform init
-terraform plan
-terraform apply -auto-approve
+terraform -chdir=${CONTAINER_PROJECT_ROOT}/terraform/env/prd init
+terraform -chdir=${CONTAINER_PROJECT_ROOT}/terraform/env/prd plan
+terraform -chdir=${CONTAINER_PROJECT_ROOT}/terraform/env/prd apply -auto-approve
 ```
 
 # ■ dockerイメージのpush
 
 ```bash
-cd $CONTAINER_PROJECT_ROOT
 ${CONTAINER_PROJECT_ROOT}/bin/build.sh --push prd
 ```
 
@@ -25,7 +23,10 @@ ${CONTAINER_PROJECT_ROOT}/bin/build.sh --push prd
 デプロイ
 
 ```bash
-cd $CONTAINER_PROJECT_ROOT
+# ビルド結果の確認
+kubectl kustomize ${CONTAINER_PROJECT_ROOT}/kustomize/overlays/prd/
+
+# デプロイ
 kubectl apply -k ${CONTAINER_PROJECT_ROOT}/kustomize/overlays/prd/
 ```
 
