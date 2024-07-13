@@ -106,13 +106,13 @@ metadata:
     # Ingressが属するグループ名。同じグループを指定すると、同じALBにIngressが紐づけられます。 (デフォルトではどのグループにも属さない)
     alb.ingress.kubernetes.io/group.name: baseport-prd
     # 外部ALB (internet-facing | internal)
+    # - internet-facing: インターネットに公開されるALB (kubernetes.io/role/elb=1 のタグが付与されているサブネットにALBが作成される)
+    # - internal: VPC内部にのみ公開されるALB (kubernetes.io/role/internal-elb=1 のタグが付与されているサブネットにALBが作成される)
     alb.ingress.kubernetes.io/scheme: internet-facing
     # Podへのトラフィックのルーティング方法を指定
     # - instance (default): ALBからのトラフィックはNodePortを経由してPodに到達する
     # - ip: ALBからのトラフィックをClusterIPを利用して直接Podにルーティングする (EKS Fargateの場合は ip でなければならない)
     alb.ingress.kubernetes.io/target-type: instance
-    # 外部ALBなのでパブリックサブネットを指定
-    alb.ingress.kubernetes.io/subnets: subnet-09413df8c627eeb8a,subnet-0199662ef38b21935,subnet-0d29de524d3d61515
     # リスナーのポートにhttp:80とhttps:443を指定
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     # すべてのHTTPリスナーをHTTPSにリダイレクトさせる設定
