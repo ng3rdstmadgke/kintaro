@@ -9,6 +9,8 @@ on:
     # Filter pattern cheat sheet - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
     - "app/**"
     - "docker/app/**"
+    - "kustomize/base/**"
+    - "kustomize/overlays/prd/**"
     # on.<event_name>.types - GitHub Docs: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onevent_nametypes
     # Events that trigger workflows (event=pull_request): https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
     types: [closed]
