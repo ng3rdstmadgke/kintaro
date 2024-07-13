@@ -75,7 +75,7 @@ jobs:
       run: |
           cd kustomize/overlays/prd
           CONTAINER_IMAGE=$APP_NAME/prd/app:${{ github.sha }}
-          kustomize edit set image $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
+          kustomize edit set image kintaro/app=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
           cat kustomization.yaml
 
     # 変更をコミット
